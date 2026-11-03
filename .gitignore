@@ -1,0 +1,19 @@
+# Datos (videos, cuadros, máscaras, etc.): no se suben a git por su peso.
+# Solo se conserva la estructura de carpetas (.gitkeep).
+data/**
+!data/**/
+!data/**/.gitkeep
+
+# Figuras generadas (se regeneran con los scripts)
+results/figures/*
+!results/figures/.gitkeep
+
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Sistema / editores
+.DS_Store
+.vscode/
+.idea/

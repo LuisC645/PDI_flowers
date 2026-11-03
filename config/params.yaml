@@ -1,0 +1,12 @@
+# Parámetros del proyecto (unidades en el comentario)
+
+frames:
+  target_fps: 10          # cuadros por segundo guardados (el video original es ~60)
+  jpeg_quality: 95        # 0-100
+  select_sharpest: true   # guarda el cuadro más nítido de cada ventana
+
+sharpness:
+  downscale: 0.5          # factor de reducción antes de medir nitidez (velocidad)
+
+sample:
+  n_frames: 18            # cuadros en el mosaico de muestra
