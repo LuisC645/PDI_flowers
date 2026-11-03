@@ -3,6 +3,8 @@
 data/**
 !data/**/
 !data/**/.gitkeep
+# Excepción: metadatos de cada video (se llenan a mano y pesan poco)
+!data/videos.csv
 
 # Figuras generadas (se regeneran con los scripts)
 results/figures/*

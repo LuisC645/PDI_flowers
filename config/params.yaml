@@ -4,7 +4,7 @@ video:
   target_fps: 10           # cuadros por segundo del video estandarizado (el original es ~60)
   crf: 23                  # calidad H.264 (menor = más calidad y más peso); 23 ≈ 156 MB por 2 min
   select_sharpest: true    # conserva el cuadro más nítido de cada ventana
-  delete_raw: true         # borra el original de videos_raw al terminar (hay backup externo)
+  delete_raw: false        # conserva el original en videos_raw (por si se necesita luego)
 
 sharpness:
   downscale: 0.5           # factor de reducción antes de medir nitidez (velocidad)
