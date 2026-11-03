@@ -1,6 +1,6 @@
 """Inventario de videos y muestra visual de cuadros.
 
-Entrada: data/video/*
+Entrada: data/videos_processed/*
 Salida:  results/tables/inventory.csv
          results/figures/sample_<video>.jpg
 Uso:     python scripts/f1_inventory.py   (desde proy/)

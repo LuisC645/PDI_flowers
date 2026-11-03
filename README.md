@@ -18,8 +18,8 @@ proy/
 ├── environment.yml          # entorno conda "pdi"
 ├── config/                  # params.yaml y decisions.md
 ├── data/
-│   ├── video/               # videos originales (no se modifican)
-│   ├── frames/              # cuadros extraídos
+│   ├── videos_raw/          # videos originales (entrada; se borran al procesarse)
+│   ├── videos_processed/    # videos estandarizados: 10 fps, sin audio (base de trabajo)
 │   ├── measurements/        # medidas de referencia (moneda, cama)
 │   ├── ground_truth/        # máscaras y conteos hechos a mano
 │   └── normalized/          # máscaras, transformaciones y video normalizado
