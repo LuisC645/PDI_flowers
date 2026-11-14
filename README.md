@@ -10,7 +10,7 @@ Primero se normaliza el video: se segmenta la cama, se endereza y se fija su esc
 
 **Equipo:** Luis Castillo y Benjamin Ruiz.
 
-> **Estado (14 nov 2026).** Preprocesamiento (Bloque A) **cerrado en su parte automática**: A7 abre la puerta en `63-40A` (`results/metrics/qc_block_a_63-40A.json`). Faltan dos tareas manuales que el código no puede hacer: las máscaras a mano (F1.4) y las medidas de la moneda (F1.3). El Bloque B corre de punta a punta como **borrador** sin calibrar. Los métodos siguen como *propuesta* en `config/decisions.md`. El avance por día y lo pendiente están en `docs/worklog.md`.
+> **Estado (14 nov 2026).** Preprocesamiento (Bloque A) **cerrado en su parte automática**: A7 abre la puerta en `63-40A` (`results/metrics/qc_block_a_63-40A.json`). Faltan dos tareas manuales que el código no puede hacer: las máscaras a mano (F1.4) y las medidas de la moneda (F1.3). El Bloque B corre de punta a punta como **borrador** sin calibrar. Los métodos siguen como *propuesta* en `config/decisions.md`. El avance por día y lo pendiente están en `docs/worklog.md`. El paso a paso de lo que falta para terminar el piloto está en `README_roadmap.md`.
 
 ## Cómo correrlo
 
