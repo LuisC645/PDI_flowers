@@ -1,4 +1,5 @@
 # Parámetros del proyecto (unidades en el comentario)
+# Los valores marcados BORRADOR son iniciales: se ajustan con la referencia hecha a mano (F1.4).
 
 video:
   target_fps: 10           # cuadros por segundo del video estandarizado (el original es ~60)
@@ -8,6 +9,93 @@ video:
 
 sharpness:
   downscale: 0.5           # factor de reducción antes de medir nitidez (velocidad)
+  window: 31               # cuadros de la mediana móvil (A1)
+  rel_threshold: 0.7       # BORRADOR: borroso si nitidez < 70 % de la mediana móvil
 
 sample:
   n_frames: 18             # cuadros en el mosaico de muestra
+
+# ---------------- BLOQUE A ----------------
+bed:                       # A2 y A3 (BORRADOR, decisión 3)
+  scale: 0.25              # reducción para segmentar (1080x1920 -> 270x480)
+  blur_sigma: 6            # px reducidos; suavizado de brillo y paralaje
+  w_parallax: 0.5          # peso del paralaje frente al brillo (0 = solo brillo)
+  min_motion_px: 1.0       # px reducidos; por debajo no se usa paralaje (no hay avance)
+  solidity_margin: 0.05    # se prefiere la máscara de solo brillo si es más compacta por este margen
+  parallax_max_gap: 5      # si no hay avance, el paralaje se mide contra un cuadro hasta 5 adelante
+  score_ema: 0.5           # peso del cuadro actual en el puntaje fusionado (1 = sin fusión)
+  prior_tol: 0.06          # fracción del alto: borde a menos de esto de la recta previa (null = sin prior)
+  prior_max_age: 5         # cuadros: el prior solo se usa si el último cuadro válido es reciente
+  morph_kernel: 15         # px reducidos; apertura y cierre
+  edge_step: 2             # px reducidos entre columnas muestreadas
+  search_frac: 0.15        # búsqueda del centro de la cama (fracción del alto)
+  ransac_iters: 200
+  ransac_tol: 6            # px reducidos (el borde de follaje es irregular)
+  min_inlier_frac: 0.35    # mínimo de puntos de borde que caen en la recta
+  max_edge_angle_diff_deg: 12  # bordes casi paralelos (la perspectiva los abre un poco)
+  max_abs_angle_deg: 30    # la cama cruza el cuadro casi horizontal
+  width_frac_range: [0.3, 0.9]  # ancho plausible (fracción del alto reducido)
+  foliage_hsv_lo: [33, 50, 30]  # follaje verde (A6), escala OpenCV H 0-180
+  foliage_hsv_hi: [85, 255, 200]
+
+operator:                  # A2 complemento: zona del camarógrafo (BORRADOR)
+  window: 21               # cuadros por ventana para medir la variación temporal
+  step: 10                 # cuadros entre ventanas
+  min_freq: 0.85           # estático en >= 85 % de las ventanas
+  extend_up_frac: 0.08     # la caja sube 8 % del alto (piernas que se mueven)
+  dilate_px: 8             # px reducidos
+
+tracking:                  # A4 (BORRADOR, decisiones 4 y 5)
+  median_window: 15        # cuadros
+  mad_k: 5                 # atípico si residuo > k·MAD local (filtro de Hampel)
+  max_gap: 10              # cuadros (1 s) que se interpolan; más largos quedan inválidos
+  savgol_window: 21        # cuadros (impar)
+  savgol_order: 2
+
+normalize:                 # A5 (BORRADOR, decisiones 6 y 7)
+  bed_width_px: 1080       # W: ancho fijo de la cama -> 1080/135 = 8 px/cm
+  bed_width_cm: 135
+  margin_frac: 0.3         # margen arriba y abajo (fracción de W): A7 necesita ver la franja entre camas
+  parallax_k: 1.0          # PENDIENTE F1.3: escala dosel / escala bordes (1 = sin corrección)
+  crf: 20
+
+color:                     # A6 (BORRADOR)
+  enabled: true
+  smooth_window: 15        # cuadros
+
+qc:                        # A7: metas fijadas ANTES de medir (BORRADOR, a discutir)
+  step: 3                  # cada cuántos cuadros se mide el color del follaje
+  max_width_cv: 0.05       # desviación / media del ancho re-medido
+  max_center_std_frac: 0.03   # desviación del centro / W
+  max_angle_std_deg: 2.0
+  max_invalid_frac: 0.10   # cuadros inválidos o interpolados
+  max_jitter_frac: 0.01    # desviación del dy entre cuadros <= 1 % de W (10.8 px ≈ 1.35 cm)
+  # color: la desviación del L del follaje entre cuadros debe bajar después de A6
+
+# ---------------- BLOQUE B ----------------
+profiles:                  # B1 (BORRADOR, decisión 8). HSV escala OpenCV (H 0-180)
+  orange:
+    hsv_lo: [5, 110, 120]
+    hsv_hi: [24, 255, 255]   # H > 25 son botones amarillo-verdosos (no se cuentan)
+    cut_feature: saturation  # criterio de color para cortar
+    cut_min: 150             # BORRADOR: calibrar con ejemplos etiquetados (curva ROC)
+    min_cut_diameter_cm: 2.3 # PENDIENTE F1.3: moneda de 100 COP (23 mm según Banco de la República)
+
+detection:                 # B2
+  min_diameter_cm: 1.0     # descarta manchas pequeñas
+  max_diameter_cm: 8.0
+  peak_min_distance_cm: 1.0   # separación mínima entre centros (watershed)
+  open_px: 3
+  close_px: 5
+
+counting:                  # B3 (BORRADOR, decisión 9)
+  method: track            # track (enlace cuadro a cuadro en coordenada global) o strip (franja central)
+  phase_scale: 0.5         # reducción para correlación de fase
+  min_response: 0.03       # correlación de fase menos fiable -> se interpola el desplazamiento
+  eps_cm: 2.0              # distancia máxima entre cuadros para la misma flor
+  max_missing: 3           # cuadros seguidos que una flor puede no detectarse
+  min_obs: 10              # una flor debe verse en >= min_obs cuadros (cada flor cruza ~40); el conteo es estable con 10
+
+results:                   # B5
+  bin_m: 1.0               # tramos de la distribución a lo largo de la cama
+  mosaic_scale: 0.5        # 4 px/cm en el mosaico

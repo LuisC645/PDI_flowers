@@ -12,8 +12,6 @@ Salida:  data/videos_processed/<video>.mp4
          results/tables/processing_log.csv          (datos del original y del estandarizado)
 Uso:     python scripts/standardize_videos.py   (desde proy/)
 """
-import shutil
-import subprocess
 import sys
 from pathlib import Path
 
@@ -23,20 +21,10 @@ from tqdm import tqdm
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.common.paths import (PROCESSED_VIDEO_DIR, RAW_VIDEO_DIR, TABLES_DIR,  # noqa: E402
                               list_videos, load_params)
-from src.common.video import get_video_info, iter_frames  # noqa: E402
+from src.common.video import close_writer, get_video_info, iter_frames, open_writer  # noqa: E402
 from src.normalization.sharpness import laplacian_variance  # noqa: E402
 
-FFMPEG = shutil.which("ffmpeg") or str(Path(sys.executable).parent / "ffmpeg")
 LOG_PATH = TABLES_DIR / "processing_log.csv"
-
-
-def open_writer(out_path, width, height, fps, crf):
-    """Abre ffmpeg para recibir cuadros BGR por stdin y codificarlos en H.264 sin audio."""
-    cmd = [FFMPEG, "-y", "-loglevel", "error",
-           "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{width}x{height}", "-r", str(fps),
-           "-i", "-", "-an", "-c:v", "libx264", "-crf", str(crf), "-preset", "medium",
-           "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out_path)]
-    return subprocess.Popen(cmd, stdin=subprocess.PIPE)
 
 
 def standardize_video(video_path, out_path, target_fps, crf, select_sharpest, downscale):
@@ -49,27 +37,26 @@ def standardize_video(video_path, out_path, target_fps, crf, select_sharpest, do
     sharpness_rows, index_rows = [], []
     best = None  # (nitidez, índice, cuadro) del mejor cuadro de la ventana actual
 
-    def keep(score, src_idx, frame):
+    def keep(score, src_idx, time_s, frame):
         writer.stdin.write(frame.tobytes())
         index_rows.append({"new_frame": len(index_rows), "source_frame": src_idx,
-                           "time_s": round(src_idx / fps, 3), "sharpness": round(score, 1)})
+                           "time_s": round(time_s, 3), "sharpness": round(score, 1)})
 
-    for src_idx, frame in tqdm(iter_frames(video_path), total=info["n_frames"], desc=video_path.name):
+    frames = iter_frames(video_path, with_time=True)
+    for src_idx, time_s, frame in tqdm(frames, total=info["n_frames"], desc=video_path.name):
         score = laplacian_variance(frame, downscale)
-        sharpness_rows.append({"source_frame": src_idx, "time_s": round(src_idx / fps, 3),
+        sharpness_rows.append({"source_frame": src_idx, "time_s": round(time_s, 3),
                                "sharpness": round(score, 1)})
         is_first = src_idx % step == 0
         if is_first or (select_sharpest and score > best[0]):
-            best = (score, src_idx, frame)
+            best = (score, src_idx, time_s, frame)
         if src_idx % step == step - 1:  # cierre de ventana
             keep(*best)
             best = None
     if best is not None:  # última ventana incompleta
         keep(*best)
 
-    writer.stdin.close()
-    if writer.wait() != 0:
-        raise RuntimeError(f"ffmpeg failed on {video_path.name}")
+    close_writer(writer, video_path.name)
     return pd.DataFrame(index_rows), pd.DataFrame(sharpness_rows)
 
 

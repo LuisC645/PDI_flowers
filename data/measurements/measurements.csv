@@ -1,0 +1,11 @@
+item,measurement,value,unit,instrument,source_or_note
+coin_100cop_diameter,1,,mm,caliper,
+coin_100cop_diameter,2,,mm,caliper,
+coin_100cop_diameter,3,,mm,caliper,
+coin_100cop_diameter,4,,mm,caliper,
+coin_100cop_diameter,5,,mm,caliper,
+bed_width,1,,cm,tape,nominal 135
+bed_length,1,,m,tape,nominal 32
+min_cut_diameter_orange,1,,mm,,relative to the coin
+coin_px_at_canopy_center,1,,px,video frame,frame number in note (parallax)
+coin_px_at_canopy_edge,1,,px,video frame,frame number in note (parallax)

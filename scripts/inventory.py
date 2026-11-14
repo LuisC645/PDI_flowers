@@ -4,7 +4,7 @@ Entrada: data/videos_processed/*
          data/videos.csv  (metadatos llenados a mano: fecha, variedad, cama, color)
 Salida:  results/tables/inventory.csv
          results/figures/sample_<video>.jpg
-Uso:     python scripts/f1_inventory.py   (desde proy/)
+Uso:     python scripts/inventory.py   (desde proy/)
 """
 import sys
 from pathlib import Path
@@ -40,6 +40,9 @@ def main():
         cv2.imwrite(str(out_path), make_mosaic(frames, labels), [cv2.IMWRITE_JPEG_QUALITY, 85])
         print("Sample saved:", out_path.name)
 
+    if not rows:
+        print("No processed videos; run scripts/standardize_videos.py first")
+        return
     inventory = pd.DataFrame(rows)
     inventory.to_csv(TABLES_DIR / "inventory.csv", index=False)
     print(inventory.to_string(index=False))

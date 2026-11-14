@@ -1,0 +1,11 @@
+{
+  "video": "63-40A",
+  "flower_color": "orange",
+  "method": "track",
+  "total_flowers": 27885,
+  "cut": 13576,
+  "cut_pct": 48.7,
+  "length_m": 32.02,
+  "median_diameter_cm": 2.27,
+  "draft_warning": "BORRADOR: umbrales sin calibrar, moneda y paralaje sin medir (F1.3, F1.4)"
+}

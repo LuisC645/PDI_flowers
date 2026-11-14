@@ -5,6 +5,9 @@ data/**
 !data/**/.gitkeep
 # Excepción: metadatos de cada video (se llenan a mano y pesan poco)
 !data/videos.csv
+# Excepción: medidas de referencia (F1.3) y lista de cuadros a etiquetar (F1.4)
+!data/measurements/*.csv
+!data/ground_truth/*.csv
 
 # Figuras generadas (se regeneran con los scripts)
 results/figures/*
@@ -19,3 +22,6 @@ __pycache__/
 .DS_Store
 .vscode/
 .idea/
+
+# Tablas pesadas que se regeneran con los scripts (una fila por detección)
+results/tables/detections_*.csv
