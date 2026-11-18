@@ -10,7 +10,7 @@ Primero se normaliza el video: se segmenta la cama, se endereza y se fija su esc
 
 **Equipo:** Luis Castillo y Benjamin Ruiz.
 
-> **Estado (14 nov 2026).** Preprocesamiento (Bloque A) **cerrado en su parte automática**: A7 abre la puerta en `63-40A` (`results/metrics/qc_block_a_63-40A.json`). Faltan dos tareas manuales que el código no puede hacer: las máscaras a mano (F1.4) y las medidas de la moneda (F1.3). El Bloque B corre de punta a punta como **borrador** sin calibrar. Los métodos siguen como *propuesta* en `config/decisions.md`. El avance por día y lo pendiente están en `docs/worklog.md`. El paso a paso de lo que falta para terminar el piloto está en `README_roadmap.md`.
+> **Estado (18 nov 2026). El código del piloto está completo.** El pipeline corre de punta a punta en las 9 camas: estandarización → Bloque A (normalización, A7 pasa en las 9) → Bloque B (detección, conteo y cuándo se corta: hoy / mañana / otros días). Lo que falta es validación con referencia hecha a mano (conteo de tramos, máscaras, flores etiquetadas) e informe. Detalle en `README_roadmap.md`, `config/decisions.md` y `docs/worklog.md`.
 
 ## Cómo correrlo
 

@@ -1,18 +1,18 @@
 # Hoja de ruta: qué falta para terminar el piloto
 
-Estado al 14 nov 2026. Cierre del proyecto: **25 nov 2026**.
+Estado al 18 nov 2026. Cierre del proyecto: **25 nov 2026**.
 Complementa a `README.md` (qué es y cómo se corre), `docs/worklog.md` (qué se hizo cada día) y `config/decisions.md` (decisiones y evidencia).
 
 ## ¿Con esto se termina el piloto?
 
-Sí. El piloto queda terminado cuando se cumplan estas seis condiciones:
+**El código está completo**: todos los pasos de las instrucciones (A1–A7 y B1–B5) están implementados y corren en las 9 camas. Lo que queda no es programar sino validar y entregar:
 
-- [ ] El preprocesamiento está validado contra máscaras hechas a mano (IoU reportado).
-- [ ] El conteo automático está comparado con el conteo manual en tramos de prueba (error reportado).
-- [ ] El criterio cortar / no cortar está calibrado con ejemplos etiquetados y evaluado.
-- [ ] Las 12 decisiones de `config/decisions.md` están cerradas, con su evidencia.
-- [ ] El código está pasado a limpio y los resultados se regeneran con los scripts.
-- [ ] El informe final y la presentación están entregados.
+- [x] Pipeline completo, de video crudo a "cuándo se corta cada flor", reproducible con los scripts.
+- [x] Las 12 decisiones de `config/decisions.md` tomadas, con su evidencia.
+- [ ] Preprocesamiento validado contra máscaras hechas a mano (IoU).
+- [ ] Conteo automático comparado con el conteo manual de tramos (error).
+- [ ] Criterio de corte calibrado con flores etiquetadas y con dos grabaciones de la misma cama.
+- [ ] Informe final y presentación.
 
 Alcance del piloto, para dejarlo explícito:
 
@@ -24,11 +24,11 @@ Alcance del piloto, para dejarlo explícito:
 
 | Parte | Estado |
 |---|---|
-| Fase 1: inventario, cuadros, estructura, nitidez | Hecho |
-| Fase 1: medidas (F1.3) y referencia a mano (F1.4) | **Falta (manual)** |
-| Bloque A: normalización (A1–A7) | Hecho; A7 abre la puerta. Falta validar contra las máscaras a mano |
-| Bloque B: detección, conteo, corte, resultados | Borrador que corre de punta a punta, **sin calibrar** |
-| Validación y análisis de errores | Falta |
+| Estandarización (orientación, HDR → SDR, 10 fps) | Hecho, 9 camas |
+| Bloque A: normalización (A1–A7) | Hecho; A7 abre la puerta en las 9 camas. Falta validar contra máscaras a mano |
+| Bloque B: perfiles de color, detección, conteo, cuándo se corta | Hecho en las 9 camas. Falta validar contra conteo manual y flores etiquetadas |
+| Referencia a mano (F1.4) y calibración del crecimiento diario | **Falta (manual)** |
+| Validación y análisis de errores | Falta (necesita la referencia a mano) |
 | Informe y presentación | Falta |
 
 Ramas: el pipeline vive en `draft-pipeline`; las pruebas en `exp/...`. `main` no se toca hasta que el equipo lo decida.
