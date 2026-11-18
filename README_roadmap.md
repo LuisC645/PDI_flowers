@@ -16,8 +16,8 @@ Sí. El piloto queda terminado cuando se cumplan estas seis condiciones:
 
 Alcance del piloto, para dejarlo explícito:
 
-- **Un solo color (naranja).** Solo hay video de la cama `63-40A`. Los perfiles de blanca, roja y amarilla quedan como trabajo futuro, salvo que lleguen más videos. **Confirmar con el profesor que esto es aceptable.**
-- **Un solo video por ahora.** Las metas de calidad se ajustaron con él. El 15 nov llegan más videos (paso 0): con ellos se confirman las metas y puede ampliarse el alcance.
+- **Cinco colores, 9 camas:** blanca (2), naranja (3), amarilla (2), roja (1) y rosada (1, perfil propio). Hay pocos videos por color: la calibración de cada perfil depende de una o dos camas.
+- El Bloque A usa una sola configuración para todos los videos, elegida comparando sobre los 9 a la vez.
 - Un piloto terminado no significa que el conteo sea exacto: significa que se sabe **cuánto se equivoca y por qué**, y qué cambiar en la versión grande.
 
 ## Dónde estamos
@@ -48,6 +48,8 @@ Llegan más videos el 15 nov. Por cada uno:
 3. Correr `python scripts/standardize_videos.py`, `python scripts/inventory.py` y `python scripts/block_a.py --video <id>`.
 4. Revisar `results/metrics/qc_block_a_<id>.json`: si A7 no abre la puerta, se ajusta el Bloque A antes de seguir.
 5. Si el color no es naranja, falta su perfil en `profiles` de `config/params.yaml` (decisión 8) antes de correr `block_b.py`.
+
+**Estado (18 nov):** hecho. 8 videos nuevos procesados (uno excluido por duplicado); A7 abre la puerta en los 9. Falta llenar la variedad, el color y las fechas en `videos.csv`, y que el equipo apruebe los cambios en el cálculo de A7 (`config/decisions.md`).
 
 **Listo cuando:** todos los videos están en el inventario y se sabe en cuáles pasa A7. Con esto cambia el alcance (más de un video y, quizá, más de un color) y se confirman las metas de A7. Los pasos 1 a 3 se repiten para los videos que se vayan a validar.
 

@@ -1,28 +1,35 @@
 {
-  "frames_checked": 1094,
-  "remeasure_valid_frac": 0.931,
-  "width_mean_px": 1109.1,
-  "width_cv": 0.0185,
-  "center_std_frac": 0.0101,
-  "center_offset_px": 3.4,
-  "angle_std_deg": 1.75,
-  "angle_mean_deg": -0.402,
-  "lateral_jitter_std_px": 3.61,
-  "lateral_jitter_std_cm": 0.451,
+  "frames_checked": 1110,
+  "remeasure_valid_frac": 0.949,
+  "width_median_px": 1108.9,
+  "width_cv": 0.0163,
+  "center_std_frac": 0.008,
+  "center_offset_px": 2.9,
+  "angle_std_deg": 1.217,
+  "angle_median_deg": -0.296,
+  "classic_std (info)": {
+    "width_cv": 0.0206,
+    "center_frac": 0.0106,
+    "angle_deg": 1.775
+  },
+  "lateral_jitter_std_px": 2.61,
+  "lateral_jitter_std_cm": 0.326,
   "foliage_lab_std_before": [
-    1.81,
+    1.83,
     1.02,
-    1.17
+    1.25
   ],
   "foliage_lab_std_after": [
-    1.42,
-    0.38,
-    0.36
+    1.48,
+    0.39,
+    0.38
   ],
-  "operator_band_frac": 0.0365,
-  "roi_band_frac": 0.925,
-  "invalid_frac": 0.0188,
-  "interpolated_frac": 0.0743,
+  "operator_band_frac": 0.0369,
+  "roi_band_frac": 0.9249,
+  "off_bed_frac": 0.0054,
+  "invalid_frac": 0.0,
+  "interpolated_frac": 0.0324,
+  "partial_frac": 0.0108,
   "pass": {
     "width_cv": true,
     "center": true,

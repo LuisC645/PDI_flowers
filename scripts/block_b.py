@@ -94,7 +94,8 @@ def step_b3(stem, P):
                                     interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2GRAY)
         if window is None:
             window = cv2.createHanningWindow(g.shape[::-1], cv2.CV_32F)
-        ok = prev is not None and status.status[i] != "invalid" and status.status[i - 1] != "invalid"
+        usable = ~status.status.isin(["invalid", "off_bed"])
+        ok = prev is not None and usable[i] and usable[i - 1]
         dx, dy, resp = frame_shift(prev, g, window) if ok else (np.nan, np.nan, 0.0)
         rows.append({"frame": i - 1, "dx": dx / sc, "dy": dy / sc, "response": resp})
         prev = g

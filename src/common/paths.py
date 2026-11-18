@@ -26,6 +26,19 @@ def load_params():
         return yaml.safe_load(f)
 
 
+def excluded_videos():
+    """Videos marcados en la columna `exclude` de data/videos.csv (por ejemplo, duplicados)."""
+    import pandas as pd
+    if not VIDEOS_METADATA.exists():
+        return set()
+    meta = pd.read_csv(VIDEOS_METADATA, dtype=str).fillna("")
+    if "exclude" not in meta:
+        return set()
+    return set(meta.video_id[meta.exclude.str.strip() != ""])
+
+
 def list_videos(folder=PROCESSED_VIDEO_DIR):
-    """Devuelve los videos de una carpeta ordenados por nombre."""
-    return sorted(p for p in Path(folder).iterdir() if p.suffix.lower() in VIDEO_EXTENSIONS)
+    """Videos de una carpeta, ordenados por nombre, sin los excluidos en data/videos.csv."""
+    skip = excluded_videos()
+    return sorted(p for p in Path(folder).iterdir()
+                  if p.suffix.lower() in VIDEO_EXTENSIONS and p.stem not in skip)

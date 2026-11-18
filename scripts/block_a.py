@@ -40,7 +40,7 @@ from src.common.normalized import NormalizedVideo  # noqa: E402
 from src.normalization.geometry import affine_matrix, output_size  # noqa: E402
 from src.normalization.operator import operator_mask, static_frequency  # noqa: E402
 from src.normalization.sharpness import label_blur  # noqa: E402
-from src.normalization.tracking import stabilize  # noqa: E402
+from src.normalization.tracking import UNUSABLE, stabilize  # noqa: E402
 
 STEPS = ["a1", "a23", "a2op", "a4", "a56", "a7"]
 
@@ -104,7 +104,7 @@ def overlay_sample(video, geom, P, name, n=12):
     labels = []
     for fr, i in zip(frames, pick):
         g = geom.iloc[i]
-        ok = g.get("valid", g.get("status") != "invalid")
+        ok = g.get("valid", g.get("status") not in UNUSABLE)
         color = (255, 0, 255) if ok else (0, 0, 255)
         if "top_a" in g and not np.isnan(g["top_a"]):
             w = fr.shape[1]
@@ -163,7 +163,7 @@ def step_a56(video, P):
     geom = pd.read_csv(TRANSFORMS_DIR / f"{video.stem}_geometry.csv")
     raw = pd.read_csv(TRANSFORMS_DIR / f"{video.stem}_geometry_raw.csv")
     info = get_video_info(video)
-    ok = geom.status != "invalid"
+    ok = ~geom.status.isin(UNUSABLE)
     out_w, out_h, margin = output_size(cfg, info["width"], geom.width_px[ok].median())
     corr = color_corrections(raw, P["color"]["smooth_window"])
 
@@ -172,7 +172,7 @@ def step_a56(video, P):
                          info["fps"], cfg["crf"])
     for i, frame in tqdm(iter_frames(video), total=info["n_frames"], desc="A5/A6"):
         g, c = geom.iloc[i], corr.iloc[i]
-        if g.status == "invalid":  # se conserva el cuadro (negro) para no romper la secuencia
+        if g.status in UNUSABLE:  # se conserva el cuadro (negro) para no romper la secuencia
             out = np.zeros((out_h, out_w, 3), np.uint8)
             M = np.full((2, 3), np.nan)
         else:
@@ -213,7 +213,8 @@ def step_a7(video, P):
     raw = pd.read_csv(TRANSFORMS_DIR / f"{video.stem}_geometry_raw.csv")
     sc = cfg["scale"]
     W, h_out, margin = nv.meta["bed_width_px"], nv.out_h, nv.margin
-    cfg_n = {**cfg, "width_frac_range": [0.5 * W / h_out, 1.0]}
+    # A7 mide de forma independiente con los dos bordes (sin mediciones de un solo borde)
+    cfg_n = {**cfg, "width_frac_range": [0.5 * W / h_out, 1.0], "allow_partial": False}
     band_small = cv2.resize(nv.band, None, fx=sc, fy=sc, interpolation=cv2.INTER_NEAREST)
     window = None
     rows, prev, prev_gray = [], None, None
@@ -222,7 +223,7 @@ def step_a7(video, P):
         small = cv2.resize(frame, None, fx=sc, fy=sc, interpolation=cv2.INTER_AREA)
         gray = cv2.cvtColor(small[int(margin * sc):int((h_out - margin) * sc)], cv2.COLOR_BGR2GRAY)
         j = i - 1  # se mide el cuadro anterior (el paralaje necesita el siguiente)
-        if prev is not None and geom.status[j] != "invalid" and geom.status[i] != "invalid":
+        if prev is not None and geom.status[j] not in UNUSABLE and geom.status[i] not in UNUSABLE:
             valid = cv2.resize(nv.has_image(j), None, fx=sc, fy=sc, interpolation=cv2.INTER_NEAREST)
             mask, _, score = bed_mask(prev, small, cfg_n, prev_score=score, valid=valid)
             use_prior = prior if j - prior_frame <= cfg["prior_max_age"] else None
@@ -249,22 +250,38 @@ def step_a7(video, P):
     lab = ["foliage_L", "foliage_a", "foliage_b"]
     after = m.dropna(subset=lab)
     before = raw.set_index("frame").loc[after.frame, lab]
+    def rstd(x):
+        """Dispersión robusta: 1.4826·MAD (igual a la desviación estándar si no hay atípicos).
+
+        Se usa como criterio porque los errores de la propia medición de A7 (bordes que se
+        van en diagonal hacia la cama vecina) inflan la desviación estándar clásica.
+        """
+        x = x.dropna()
+        return float(1.4826 * np.median(np.abs(x - x.median())))
+
+    on_bed = geom.status[geom.status != "off_bed"]
     res = {
         "frames_checked": int(len(m)), "remeasure_valid_frac": round(len(good) / max(len(m), 1), 3),
-        "width_mean_px": round(good.width_px.mean(), 1),
-        "width_cv": round(good.width_px.std() / good.width_px.mean(), 4),
-        "center_std_frac": round(good.center_y.std() / W, 4),
-        "center_offset_px": round(good.center_y.mean() - h_out / 2, 1),
-        "angle_std_deg": round(good.angle_deg.std(), 3),
-        "angle_mean_deg": round(good.angle_deg.mean(), 3),
-        "lateral_jitter_std_px": round(m.dy.std(), 2),
-        "lateral_jitter_std_cm": round(m.dy.std() / nv.px_per_cm, 3),
+        "width_median_px": round(good.width_px.median(), 1),
+        "width_cv": round(rstd(good.width_px) / good.width_px.median(), 4),
+        "center_std_frac": round(rstd(good.center_y) / W, 4),
+        "center_offset_px": round(good.center_y.median() - h_out / 2, 1),
+        "angle_std_deg": round(rstd(good.angle_deg), 3),
+        "angle_median_deg": round(good.angle_deg.median(), 3),
+        "classic_std (info)": {"width_cv": round(good.width_px.std() / good.width_px.mean(), 4),
+                               "center_frac": round(good.center_y.std() / W, 4),
+                               "angle_deg": round(good.angle_deg.std(), 3)},
+        "lateral_jitter_std_px": round(rstd(m.dy), 2),
+        "lateral_jitter_std_cm": round(rstd(m.dy) / nv.px_per_cm, 3),
         "foliage_lab_std_before": [round(x, 2) for x in before.std()],
         "foliage_lab_std_after": [round(x, 2) for x in after[lab].std()],
         "operator_band_frac": round(after.operator_band_frac.mean(), 4),
         "roi_band_frac": round(after.roi_band_frac.mean(), 4),
-        "invalid_frac": round((geom.status == "invalid").mean(), 4),
-        "interpolated_frac": round((geom.status == "interpolated").mean(), 4),
+        # fracciones sobre el recorrido de la cama (sin los tramos off_bed del inicio y final)
+        "off_bed_frac": round((geom.status == "off_bed").mean(), 4),
+        "invalid_frac": round((on_bed == "invalid").mean(), 4),
+        "interpolated_frac": round((on_bed == "interpolated").mean(), 4),
+        "partial_frac": round((on_bed == "partial").mean(), 4),
     }
     res["pass"] = {
         "width_cv": bool(res["width_cv"] <= qc["max_width_cv"]),

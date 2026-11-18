@@ -1,0 +1,45 @@
+{
+  "frames_checked": 772,
+  "remeasure_valid_frac": 0.85,
+  "width_median_px": 1112.6,
+  "width_cv": 0.0478,
+  "center_std_frac": 0.0245,
+  "center_offset_px": -9.7,
+  "angle_std_deg": 1.6,
+  "angle_median_deg": -0.299,
+  "classic_std (info)": {
+    "width_cv": 0.0909,
+    "center_frac": 0.0456,
+    "angle_deg": 2.258
+  },
+  "lateral_jitter_std_px": 3.43,
+  "lateral_jitter_std_cm": 0.429,
+  "foliage_lab_std_before": [
+    6.47,
+    0.82,
+    1.23
+  ],
+  "foliage_lab_std_after": [
+    4.47,
+    0.53,
+    0.7
+  ],
+  "operator_band_frac": 0.0282,
+  "roi_band_frac": 0.9509,
+  "off_bed_frac": 0.0398,
+  "invalid_frac": 0.0,
+  "interpolated_frac": 0.0181,
+  "partial_frac": 0.0246,
+  "pass": {
+    "width_cv": true,
+    "center": true,
+    "angle": true,
+    "lateral_jitter": true,
+    "color_stability": true,
+    "invalid": true
+  },
+  "pending_manual": [
+    "mask_vs_ground_truth (F1.4): python scripts/evaluate_block_a.py"
+  ],
+  "gate_open": true
+}

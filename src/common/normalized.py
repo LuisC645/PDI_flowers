@@ -36,8 +36,8 @@ class NormalizedVideo:
 
     @property
     def valid_frames(self):
-        """Cuadros utilizables (medidos o interpolados)."""
-        return self.transforms.frame[self.transforms.status != "invalid"].tolist()
+        """Cuadros utilizables (medidos, con un borde o interpolados)."""
+        return self.transforms.frame[~self.transforms.status.isin(["invalid", "off_bed"])].tolist()
 
     def matrix(self, frame):
         """Matriz 2x3 cuadro original -> normalizado (NaN si el cuadro es inválido)."""

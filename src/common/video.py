@@ -1,4 +1,10 @@
-"""Lectura y escritura básica de video (OpenCV para leer, ffmpeg para escribir)."""
+"""Lectura y escritura de video.
+
+Los videos originales (pueden venir en HDR y con etiqueta de rotación) se leen con ffmpeg
+(read_ffmpeg). Los videos ya estandarizados (SDR, sin rotación) se leen con OpenCV.
+"""
+import json
+import os
 import shutil
 import subprocess
 import sys
@@ -8,6 +14,12 @@ import cv2
 import numpy as np
 
 FFMPEG = shutil.which("ffmpeg") or str(Path(sys.executable).parent / "ffmpeg")
+FFPROBE = shutil.which("ffprobe") or str(Path(sys.executable).parent / "ffprobe")
+HDR_TRANSFERS = {"arib-std-b67", "smpte2084"}  # HLG y PQ
+# HDR -> SDR BT.709 con mapeo de tonos (libplacebo, usa la GPU vía Vulkan/MoltenVK)
+TONEMAP = ("libplacebo=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv:"
+           "tonemapping=bt.2390:format=yuv420p")
+TRANSPOSE = {0: None, 90: "transpose=1", 180: "transpose=1,transpose=1", 270: "transpose=2"}
 
 
 def get_video_info(video_path):
@@ -28,6 +40,68 @@ def get_video_info(video_path):
     }
     cap.release()
     return info
+
+
+def probe_stream(video_path):
+    """Datos del video que importan para leerlo bien: tamaño mostrado, HDR, rotación, fps."""
+    out = subprocess.run([FFPROBE, "-v", "error", "-select_streams", "v:0", "-show_entries",
+                          "stream=width,height,color_transfer,avg_frame_rate,nb_frames:"
+                          "stream_side_data=rotation", "-of", "json", str(video_path)],
+                         capture_output=True, text=True, check=True).stdout
+    st = json.loads(out)["streams"][0]
+    rotation = next((int(d["rotation"]) for d in st.get("side_data_list", []) if "rotation" in d), 0)
+    w, h = st["width"], st["height"]
+    if rotation % 180:  # ffmpeg y OpenCV aplican la rotación de la etiqueta al leer
+        w, h = h, w
+    num, den = (int(x) for x in st["avg_frame_rate"].split("/"))
+    return {"width": w, "height": h, "rotation_tag": rotation,
+            "hdr": st.get("color_transfer") in HDR_TRANSFERS, "fps": num / den}
+
+
+def frame_times(video_path):
+    """Tiempo (s) de cada cuadro en orden de presentación (pts de los paquetes)."""
+    out = subprocess.run([FFPROBE, "-v", "error", "-select_streams", "v:0", "-show_entries",
+                          "packet=pts_time", "-of", "csv=p=0", str(video_path)],
+                         capture_output=True, text=True, check=True).stdout
+    return sorted(float(x) for x in out.split() if x not in ("", "N/A"))
+
+
+def read_ffmpeg(video_path, extra_rotation=0, tonemap=None):
+    """Recorre el video con ffmpeg y entrega (índice, tiempo_s, cuadro BGR 8 bits).
+
+    - Aplica la rotación de la etiqueta (como OpenCV) y luego extra_rotation (0/90/180/270,
+      sentido horario) para dejar al camarógrafo abajo.
+    - Si el video es HDR (o tonemap=True), lo convierte a SDR BT.709 con mapeo de tonos.
+    """
+    info = probe_stream(video_path)
+    tonemap = info["hdr"] if tonemap is None else tonemap
+    filters = [f for f in (TONEMAP if tonemap else None, TRANSPOSE[extra_rotation % 360]) if f]
+    w, h = info["width"], info["height"]
+    if extra_rotation % 180:
+        w, h = h, w
+    cmd = [FFMPEG, "-v", "error", "-i", str(video_path)]
+    if filters:
+        cmd += ["-vf", ",".join(filters)]
+    cmd += ["-fps_mode", "passthrough", "-pix_fmt", "bgr24", "-f", "rawvideo", "-"]
+    times = frame_times(video_path)
+    env = {**os.environ, "MVK_CONFIG_LOG_LEVEL": "0"}  # silencia MoltenVK
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env, bufsize=w * h * 3 * 4)
+    size, idx = w * h * 3, 0
+    try:
+        while True:
+            buf = proc.stdout.read(size)
+            if len(buf) < size:
+                break
+            t = times[idx] - times[0] if idx < len(times) else idx / info["fps"]
+            yield idx, t, np.frombuffer(buf, np.uint8).reshape(h, w, 3)
+            idx += 1
+    finally:
+        if proc.poll() is None:  # se dejó de leer antes del final: cerrar ffmpeg sin ruido
+            proc.kill()
+        proc.stdout.close()
+        proc.wait()
+    if proc.returncode not in (0, None) and idx == 0:
+        raise RuntimeError(f"ffmpeg could not read {video_path}")
 
 
 def read_frames(video_path, frame_indices):

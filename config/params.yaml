@@ -6,6 +6,7 @@ video:
   crf: 23                  # calidad H.264 (menor = más calidad y más peso); 23 ≈ 156 MB por 2 min
   select_sharpest: true    # conserva el cuadro más nítido de cada ventana
   delete_raw: false        # conserva el original en videos_raw (por si se necesita luego)
+  orientation_min_confidence: 1.2  # por debajo, el giro se fija a mano (columna rotate de videos.csv)
 
 sharpness:
   downscale: 0.5           # factor de reducción antes de medir nitidez (velocidad)
@@ -26,8 +27,10 @@ bed:                       # A2 y A3 (BORRADOR, decisión 3)
   score_ema: 0.5           # peso del cuadro actual en el puntaje fusionado (1 = sin fusión)
   prior_tol: 0.06          # fracción del alto: borde a menos de esto de la recta previa (null = sin prior)
   prior_max_age: 5         # cuadros: el prior solo se usa si el último cuadro válido es reciente
+  prior_slope_tol_deg: 5   # pendiente de cada borde a +-esto de la del cuadro anterior (null = sin límite)
+  allow_partial: true      # si un borde falla, medir con el otro + ancho de referencia
   morph_kernel: 15         # px reducidos; apertura y cierre
-  edge_step: 2             # px reducidos entre columnas muestreadas
+  edge_step: 1             # px reducidos entre columnas muestreadas
   search_frac: 0.15        # búsqueda del centro de la cama (fracción del alto)
   ransac_iters: 200
   ransac_tol: 6            # px reducidos (el borde de follaje es irregular)

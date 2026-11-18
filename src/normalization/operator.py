@@ -29,19 +29,22 @@ def static_frequency(small_frames, window, step):
     return freq / max(n, 1)
 
 
-def operator_mask(freq, min_freq, extend_up_frac, dilate_px):
+def operator_mask(freq, min_freq, extend_up_frac, dilate_px, bottom_frac=0.15):
     """Zona del camarógrafo (uint8 0/255) como una caja conservadora.
 
-    Núcleo: la componente más grande con frecuencia >= min_freq que toca el borde inferior
-    (el pantalón oscuro). Las piernas se mueven al caminar y no son "estáticas", así que la
+    Núcleo: la componente más grande con frecuencia >= min_freq cuyo borde de abajo cae en
+    el último bottom_frac del alto y que está centrada en horizontal (el pantalón oscuro). Las piernas se mueven al caminar y no son "estáticas", así que la
     zona es la caja del núcleo extendida hacia arriba extend_up_frac del alto y dilatada.
     Excluir de más no quita flores: cada flor del borde pasa por otras x del cuadro.
     """
     h, w = freq.shape
     m = (freq >= min_freq).astype(np.uint8)
     n, labels, stats, _ = cv2.connectedComponentsWithStats(m)
+    # Cerca del borde inferior (no necesariamente tocándolo: a veces la mano o el zapato,
+    # que se mueven, quedan entre el pantalón y el borde) y centrada en horizontal.
     touching = [i for i in range(1, n)
-                if stats[i, cv2.CC_STAT_TOP] + stats[i, cv2.CC_STAT_HEIGHT] >= h - 1]
+                if stats[i, cv2.CC_STAT_TOP] + stats[i, cv2.CC_STAT_HEIGHT] >= (1 - bottom_frac) * h
+                and w * 0.2 <= stats[i, cv2.CC_STAT_LEFT] + stats[i, cv2.CC_STAT_WIDTH] / 2 <= w * 0.8]
     out = np.zeros((h, w), np.uint8)
     if not touching:
         return out
@@ -52,3 +55,43 @@ def operator_mask(freq, min_freq, extend_up_frac, dilate_px):
     if dilate_px > 0:
         out = cv2.dilate(out, cv2.getStructuringElement(cv2.MORPH_RECT, (2 * dilate_px + 1,) * 2))
     return out
+
+
+def operator_side(freq, strip_frac=0.12):
+    """Borde del cuadro donde está el camarógrafo, por la frecuencia de píxeles estáticos.
+
+    Mira una franja de cada borde (su mitad central) y elige la de mayor frecuencia media.
+    Devuelve (borde, giro horario en grados para dejarlo abajo, confianza = mejor / segundo).
+    """
+    h, w = freq.shape
+    sh, sw = max(1, int(strip_frac * h)), max(1, int(strip_frac * w))
+    cx, cy = slice(w // 4, 3 * w // 4), slice(h // 4, 3 * h // 4)
+    score = {"bottom": freq[h - sh:, cx].mean(), "top": freq[:sh, cx].mean(),
+             "right": freq[cy, w - sw:].mean(), "left": freq[cy, :sw].mean()}
+    rotation = {"bottom": 0, "left": 270, "top": 180, "right": 90}
+    best, second = sorted(score, key=score.get, reverse=True)[:2]
+    return best, rotation[best], float(score[best] / max(score[second], 1e-6))
+
+
+def detect_orientation(video_path, scale=0.25, n_chunks=5, chunk_len=31):
+    """Giro horario (0/90/180/270) que deja al camarógrafo abajo, y la confianza de la detección.
+
+    Lee n_chunks tramos de chunk_len cuadros seguidos (OpenCV ya aplica la etiqueta de
+    rotación), mide la frecuencia de píxeles estáticos y busca el borde del camarógrafo.
+    """
+    cap = cv2.VideoCapture(str(video_path))
+    n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    freqs = []
+    for start in np.linspace(0.15 * n, 0.85 * n - chunk_len, n_chunks).astype(int):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, int(start))
+        frames = []
+        for _ in range(chunk_len):
+            ok, f = cap.read()
+            if not ok:
+                break
+            frames.append(cv2.resize(f, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA))
+        if len(frames) >= 21:
+            freqs.append(static_frequency(np.stack(frames), 21, 5))
+    cap.release()
+    side, rotation, confidence = operator_side(np.mean(freqs, axis=0))
+    return side, rotation, confidence

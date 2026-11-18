@@ -131,8 +131,12 @@ def _edge_points(mask, center_row, step, search):
     return np.array(xs, float), np.array(tops, float), np.array(bots, float)
 
 
-def ransac_line(x, y, iters, tol, rng):
-    """Ajusta y = a·x + b con RANSAC y refina por mínimos cuadrados. Devuelve (a, b, % inliers)."""
+def ransac_line(x, y, iters, tol, rng, slope_range=None):
+    """Ajusta y = a·x + b con RANSAC y refina por mínimos cuadrados. Devuelve (a, b, % inliers).
+
+    slope_range: (min, max) de pendientes aceptables; las rectas candidatas fuera de ese rango
+                 se descartan (evita que un borde se ajuste en diagonal).
+    """
     ok = ~np.isnan(y)
     x, y = x[ok], y[ok]
     if len(x) < 5:
@@ -143,9 +147,13 @@ def ransac_line(x, y, iters, tol, rng):
         if x[i] == x[j]:
             continue
         a = (y[j] - y[i]) / (x[j] - x[i])
+        if slope_range is not None and not slope_range[0] <= a <= slope_range[1]:
+            continue
         inl = np.abs(y - (a * x + y[i] - a * x[i])) < tol
         if best is None or inl.sum() > best.sum():
             best = inl
+    if best is None or best.sum() < 2:
+        return np.nan, np.nan, 0.0
     a, b = np.polyfit(x[best], y[best], 1)
     return a, b, best.sum() / len(x)
 
@@ -194,8 +202,16 @@ def bed_edges(mask, cfg, scale, center_guess=None, seed=0, prior=None, valid=Non
         tol = cfg["prior_tol"] * h
         tops = _apply_prior(xs, tops, (prior["top_a"], prior["top_b"] * scale), tol)
         bots = _apply_prior(xs, bots, (prior["bottom_a"], prior["bottom_b"] * scale), tol)
-    a_t, b_t, in_t = ransac_line(xs, tops, cfg["ransac_iters"], cfg["ransac_tol"], rng)
-    a_b, b_b, in_b = ransac_line(xs, bots, cfg["ransac_iters"], cfg["ransac_tol"], rng)
+    lim = np.tan(np.radians(cfg["max_abs_angle_deg"]))
+    ranges = {"top": (-lim, lim), "bottom": (-lim, lim)}
+    if prior is not None and cfg.get("prior_slope_tol_deg"):
+        for edge in ranges:  # pendiente cerca de la del cuadro anterior
+            ang = np.degrees(np.arctan(prior[f"{edge}_a"]))
+            tol_deg = cfg["prior_slope_tol_deg"]
+            ranges[edge] = (max(-lim, np.tan(np.radians(ang - tol_deg))),
+                            min(lim, np.tan(np.radians(ang + tol_deg))))
+    a_t, b_t, in_t = ransac_line(xs, tops, cfg["ransac_iters"], cfg["ransac_tol"], rng, ranges["top"])
+    a_b, b_b, in_b = ransac_line(xs, bots, cfg["ransac_iters"], cfg["ransac_tol"], rng, ranges["bottom"])
 
     xm = w / 2
     angle = np.degrees(np.arctan((a_t + a_b) / 2))
@@ -210,13 +226,53 @@ def bed_edges(mask, cfg, scale, center_guess=None, seed=0, prior=None, valid=Non
         "width": lo * h <= width <= hi * h,
     }
     failed = [k for k, v in checks.items() if not v]
-    return {
+    out = {
         "angle_deg": angle, "center_x": xm / scale, "center_y": center / scale,
         "width_px": width / scale, "edge_angle_diff_deg": diff,
         "inliers_top": in_t, "inliers_bottom": in_b,
         "top_a": a_t, "top_b": b_t / scale, "bottom_a": a_b, "bottom_b": b_b / scale,
-        "valid": not failed, "fail_reason": ",".join(failed),
+        "valid": not failed, "partial": False, "fail_reason": ",".join(failed),
+        "width_ref_px": width / scale if not failed else np.nan,
     }
+    if failed and prior is not None and cfg.get("allow_partial"):
+        partial = _partial_from_one_edge(out, prior, cfg, scale, h, xm)
+        if partial is not None:
+            return partial
+    return out
+
+
+def _partial_from_one_edge(g, prior, cfg, scale, h, xm):
+    """Si un borde falla, usa el otro (si es bueno y coincide con el cuadro anterior) y el ancho
+    de referencia del cuadro anterior. El ancho no se mide: width_px = NaN (A4 lo interpola).
+    """
+    width_ref = prior.get("width_ref_px", np.nan)
+    if np.isnan(width_ref):
+        return None
+    best = None
+    for edge in ("top", "bottom"):
+        a, b = g[f"{edge}_a"], g[f"{edge}_b"] * scale
+        if np.isnan(a) or g[f"inliers_{edge}"] < cfg["min_inlier_frac"]:
+            continue
+        pa, pb = prior[f"{edge}_a"], prior[f"{edge}_b"] * scale
+        d_ang = abs(np.degrees(np.arctan(a) - np.arctan(pa)))
+        d_off = abs((a * xm + b) - (pa * xm + pb))
+        if d_ang <= cfg["prior_slope_tol_deg"] and d_off <= cfg["prior_tol"] * h:
+            if best is None or g[f"inliers_{edge}"] > g[f"inliers_{best[0]}"]:
+                best = (edge, a, b)
+    if best is None:
+        return None
+    edge, a, b = best
+    angle = np.degrees(np.arctan(a))
+    if abs(angle) > cfg["max_abs_angle_deg"]:
+        return None
+    shift = width_ref * scale / np.cos(np.radians(angle))  # ancho vertical en px reducidos
+    a_t = a_b = a
+    b_t, b_b = (b, b + shift) if edge == "top" else (b - shift, b)
+    center = ((a_t * xm + b_t) + (a_b * xm + b_b)) / 2
+    return {**g, "angle_deg": angle, "center_y": center / scale, "width_px": np.nan,
+            "top_a": a_t, "top_b": b_t / scale, "bottom_a": a_b, "bottom_b": b_b / scale,
+            "valid": True, "partial": True, "fail_reason": f"partial_{edge}",
+            "width_ref_px": width_ref}
 
 
 def foliage_lab_stats(small, mask, cfg):

@@ -58,3 +58,19 @@ Registro por día: qué se hizo, qué quedó a medias y qué sigue. Las decision
 - El ancho de la cama, al volver a medirlo, da +2.7 % (1109 px frente a 1080): unos 0.06 cm en una flor de 2.3 cm, justo donde está el umbral de la moneda.
 - El diámetro cambia con la posición a lo ancho (2.0–2.2 cm en el centro, 2.6–2.9 cm en el borde inferior): perspectiva o efecto real.
 - Cronograma: hoy debería estar la Fase 3 (A5–A7 y B1). A y un borrador de B están; faltan las tareas manuales de la Fase 1.
+
+## 17–18 nov 2026
+
+### Hecho
+- **8 videos nuevos** procesados (`63_38B`, `63_39A`, `63_39B`, `63_41A`, `63_58A`, `63_59A`, `63_63A`, `64_45B`). `63_40A` se excluyó por ser la misma cama que `63-40A`.
+- **Estandarización:** ahora lee con ffmpeg, pasa el HDR del iPhone a SDR (libplacebo) y gira automáticamente los videos grabados en horizontal (`63_40A`, `64_45B`) para dejar al camarógrafo abajo. Giro, HDR y confianza quedan en `processing_log.csv`.
+- **Zona del camarógrafo:** ya no exige tocar el borde inferior (en los videos nuevos aparece la mano o el zapato debajo del pantalón).
+- **Bloque A con un solo modo para todos los videos**, elegido con `scripts/sweep_block_a.py` (compara configuraciones sobre los 9 videos a la vez): RANSAC con pendiente acotada, un punto de borde por columna y medición con un solo borde. Inválidos + interpolados: 14.9 % → 7.5 % en promedio.
+- **A7:** mide con los dos bordes, usa dispersión robusta y cuenta los cuadros malos solo en el recorrido de la cama (`off_bed` aparte). **Los 9 videos abren la puerta.** Estos cambios se definieron después de ver los datos: están en `config/decisions.md` para que el equipo los apruebe.
+
+### Pendiente
+- Llenar en `data/videos.csv` la variedad, el color y las fechas de los videos nuevos (`white`, `orange`, `yellow`, `red`, `pink`).
+- Aprobar en equipo los cambios en el cálculo de A7.
+- Las tareas manuales siguen pendientes (`README_roadmap.md`, pasos 1–3); conviene hacer las máscaras a mano de al menos un video por color.
+- Perfiles de color para blanca, amarilla, roja y rosada (Bloque B).
+- Recortar los cuadros de transición al inicio y al final de cada cama, que hoy quedan medidos pero incluyen pasillo.

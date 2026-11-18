@@ -12,6 +12,7 @@ import numpy as np
 from scipy.signal import savgol_filter
 
 COLUMNS = ["angle_deg", "center_y", "width_px"]
+UNUSABLE = ("invalid", "off_bed")  # estados de cuadro sin geometría utilizable
 
 
 def flag_outliers(series, window, k):
@@ -44,7 +45,9 @@ def smooth_segments(series, window, order):
 def stabilize(geom, cfg):
     """Devuelve la geometría estabilizada y el estado de cada cuadro.
 
-    status: measured (medido y válido), interpolated (hueco corto) o invalid.
+    status: measured (medido y válido), partial (un solo borde + ancho de referencia; el ancho
+            se interpola), interpolated (hueco corto), invalid u off_bed (inválido al inicio o
+            al final del video: todavía no hay cama o ya se salió de ella).
     """
     out = geom[["frame"]].copy()
     ok = geom["valid"].astype(bool).copy()
@@ -55,6 +58,13 @@ def stabilize(geom, cfg):
         s = geom[col].where(ok).interpolate(limit=cfg["max_gap"], limit_area="inside")
         out[col] = smooth_segments(s, cfg["savgol_window"], cfg["savgol_order"])
     out["center_x"] = geom["center_x"]
-    out["status"] = np.where(ok, "measured", np.where(out["width_px"].notna(), "interpolated",
-                                                      "invalid"))
+    partial = geom["partial"].astype(bool) if "partial" in geom else False
+    out["status"] = np.where(ok & ~partial, "measured",
+                             np.where(ok & partial & out["width_px"].notna(), "partial",
+                                      np.where(out["width_px"].notna(), "interpolated", "invalid")))
+    # Tramos inválidos al inicio y al final: el camarógrafo aún no entra o ya salió de la cama
+    usable = np.flatnonzero(out["status"] != "invalid")
+    if usable.size:
+        out.loc[:usable[0] - 1, "status"] = "off_bed"
+        out.loc[usable[-1] + 1:, "status"] = "off_bed"
     return out
