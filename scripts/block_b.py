@@ -30,8 +30,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from src.analysis.counting import (aggregate_flowers, classify_cut, frame_shift,  # noqa: E402
-                                   global_offsets, link_tracks, strip_flowers)
+from src.analysis.counting import (aggregate_flowers, classify_maturity, crossing_tracks,  # noqa: E402
+                                   frame_shift, global_offsets, link_tracks, stitch_tracks)
 from src.analysis.detection import detect_flowers  # noqa: E402
 from src.common.normalized import NormalizedVideo  # noqa: E402
 from src.common.paths import (FIGURES_DIR, METRICS_DIR, NORMALIZED_VIDEO_DIR, TABLES_DIR,  # noqa: E402
@@ -39,7 +39,6 @@ from src.common.paths import (FIGURES_DIR, METRICS_DIR, NORMALIZED_VIDEO_DIR, TA
 from src.common.video import iter_frames, read_frames  # noqa: E402
 
 STEPS = ["b12", "b3", "b4", "b5"]
-CUT_BGR, NO_CUT_BGR = (0, 255, 0), (255, 0, 0)  # verde = cortar, azul = no cortar
 
 
 def context(stem, P):
@@ -82,9 +81,18 @@ def step_b12(stem, P):
                 [cv2.IMWRITE_JPEG_QUALITY, 80])
 
 
+def counting_line(nv, n_sample=40):
+    """Columna del cuadro normalizado donde la región útil está más completa (fuera de la zona
+    del camarógrafo y de las cuñas de la rotación); entre empates, la más cercana al centro."""
+    frames = nv.valid_frames[::max(1, len(nv.valid_frames) // n_sample)]
+    cov = np.mean([(nv.roi(i)[nv.margin:nv.out_h - nv.margin] > 0).mean(axis=0) for i in frames], axis=0)
+    best = np.flatnonzero(cov >= cov.max() - 0.005)
+    return int(best[np.argmin(np.abs(best - nv.out_w / 2))])
+
+
 def step_b3(stem, P):
     """B3: desplazamiento entre cuadros, coordenada global y conteo único."""
-    meta, _, _, status, _ = context(stem, P)
+    meta, _, _, status, nv = context(stem, P)
     cfg, sc = P["counting"], P["counting"]["phase_scale"]
     m = meta["margin_px"]
     rows, prev = [], None
@@ -114,11 +122,19 @@ def step_b3(stem, P):
     det["u_cm"] = u_px / meta["px_per_cm"]
     det["v_link_cm"] = (det["y"] - det["offset_y"]) / meta["px_per_cm"]
     det = link_tracks(det, cfg["eps_cm"], cfg["max_missing"])
+    n_raw = det.flower_id.nunique()
+    det = stitch_tracks(det, cfg["stitch_gap"], cfg["stitch_eps_cm"])
     flowers = aggregate_flowers(det, cfg["min_obs"])
-    strip = strip_flowers(det, shifts, meta["out_w"])
+    line_x = counting_line(nv)
+    # Línea de conteo: decide QUÉ flores se cuentan (cada punto de la cama la cruza una vez).
+    # Las medidas de cada una salen de su rastro completo (mediana de ~30 observaciones).
+    tracks = aggregate_flowers(det, 1).set_index("flower_id")
+    strip = tracks.loc[crossing_tracks(det, line_x, cfg["line_min_obs"])].reset_index()
+    print(f"B3: tracks {n_raw} -> {det.flower_id.nunique()} after stitching; counting line at x={line_x}")
     det.round(3).to_csv(TABLES_DIR / f"detections_{stem}.csv", index=False)
-    chosen = flowers if cfg["method"] == "track" else strip
-    chosen.round(3).to_csv(TABLES_DIR / f"flowers_{stem}.csv", index=False)
+    # se guardan los dos conteos: seguimiento (flowers) y línea de conteo (flowers_line)
+    flowers.round(3).to_csv(TABLES_DIR / f"flowers_{stem}.csv", index=False)
+    strip.round(3).to_csv(TABLES_DIR / f"flowers_line_{stem}.csv", index=False)
 
     length_m = det.u_cm.max() / 100
     print(f"B3: travelled length {length_m:.1f} m (bed = 32 m), "
@@ -128,13 +144,17 @@ def step_b3(stem, P):
 
 
 def step_b4(stem, P):
-    """B4: etiqueta cortar / no cortar."""
-    _, profile, _, _, _ = context(stem, P)
-    path = TABLES_DIR / f"flowers_{stem}.csv"
-    flowers = classify_cut(pd.read_csv(path), profile)
-    flowers.round(3).to_csv(path, index=False)
-    print(f"B4: cut {flowers.cut.sum()} / {len(flowers)}  (size ok {flowers.size_ok.mean():.0%}, "
-          f"color ok {flowers.color_ok.mean():.0%})")
+    """B4: cuándo se corta cada flor (hoy, mañana, otros días), con el umbral de color calibrado."""
+    _, profile, color, _, _ = context(stem, P)
+    cal_path = METRICS_DIR / "color_calibration.json"
+    if not cal_path.exists():
+        raise SystemExit("Run scripts/calibrate_colors.py first (after the b3 step of every video)")
+    thr = json.loads(cal_path.read_text())[stem]["threshold"]  # calibrado por cama
+    for name in ("flowers", "flowers_line"):
+        path = TABLES_DIR / f"{name}_{stem}.csv"
+        f = classify_maturity(pd.read_csv(path), color, thr, P["cut"], profile.get("min_cut_ratio", 1.0))
+        f.round(3).to_csv(path, index=False)
+        print(f"B4 ({name}): " + ", ".join(f"{k} {v}" for k, v in f.stage.value_counts().items()))
 
 
 def build_mosaic(stem, meta, shifts, scale):
@@ -171,35 +191,50 @@ def build_mosaic(stem, meta, shifts, scale):
     return mosaic[:, ::-1].copy() if sh["walk_left"].iloc[0] else mosaic
 
 
+STAGE_BGR = {"today": (0, 200, 0), "tomorrow": (0, 215, 255), "later": (255, 120, 0)}
+STAGE_ES = {"today": "hoy", "tomorrow": "mañana", "later": "otros días"}
+
+
 def step_b5(stem, P):
-    """B5: conteo total, % a cortar, distribución por metro, histograma y mosaico marcado."""
+    """B5: conteo total, cuándo se corta, distribución por metro y mosaico marcado."""
     meta, profile, color, _, _ = context(stem, P)
-    flowers = pd.read_csv(TABLES_DIR / f"flowers_{stem}.csv")
+    main = "flowers" if P["counting"]["method"] == "track" else "flowers_line"
+    flowers = pd.read_csv(TABLES_DIR / f"{main}_{stem}.csv")
+    other = pd.read_csv(TABLES_DIR / f"{'flowers_line' if main == 'flowers' else 'flowers'}_{stem}.csv")
     shifts = pd.read_csv(TABLES_DIR / f"shifts_{stem}.csv")
     bin_m = P["results"]["bin_m"]
     flowers["meter"] = (flowers.u_cm / 100 // bin_m * bin_m).astype(int)
-    per_m = flowers.groupby("meter").agg(total=("cut", "size"), cut=("cut", "sum")).reset_index()
-    per_m["cut_pct"] = (100 * per_m.cut / per_m.total).round(1)
-    per_m.to_csv(TABLES_DIR / f"per_meter_{stem}.csv", index=False)
+    per_m = flowers.pivot_table(index="meter", columns="stage", values="u_cm", aggfunc="size",
+                                fill_value=0).reindex(columns=list(STAGE_BGR), fill_value=0)
+    per_m["total"] = per_m.sum(axis=1)
+    per_m.reset_index().to_csv(TABLES_DIR / f"per_meter_{stem}.csv", index=False)
+    stages = flowers.stage.value_counts()
+    days = flowers.loc[flowers.stage == "later", "days_to_size"].value_counts().sort_index()
     summary = {
         "video": stem, "flower_color": color, "method": P["counting"]["method"],
-        "total_flowers": int(len(flowers)), "cut": int(flowers.cut.sum()),
-        "cut_pct": round(100 * flowers.cut.mean(), 1),
-        "length_m": round(flowers.u_cm.max() / 100, 2),
+        "total_flowers": int(len(flowers)),
+        "total_flowers_other_method": int(len(other)),
+        "methods_diff_pct": round(100 * (len(flowers) / max(len(other), 1) - 1), 1),
+        **{f"{k}": int(stages.get(k, 0)) for k in STAGE_BGR},
+        **{f"{k}_pct": round(100 * stages.get(k, 0) / max(len(flowers), 1), 1) for k in STAGE_BGR},
+        "later_by_days": {int(k): int(v) for k, v in days.items()},
+        "cut_diameter_cm": round(float(flowers.d_cut_cm.iloc[0]), 2),
         "median_diameter_cm": round(flowers.d_cm.median(), 2),
-        "draft_warning": "BORRADOR: umbrales sin calibrar, moneda y paralaje sin medir (F1.3, F1.4)",
+        "length_m": round(flowers.u_cm.max() / 100, 2),
+        "note": "aproximación: crecimiento supuesto de growth_per_day; color calibrado sin etiquetas",
     }
     (METRICS_DIR / f"summary_{stem}.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False))
-    print("B5:", json.dumps(summary, indent=2, ensure_ascii=False))
+    print("B5:", json.dumps(summary, ensure_ascii=False))
 
     fig, ax = plt.subplots(figsize=(11, 3.5))
-    ax.bar(per_m.meter + bin_m / 2, per_m.total - per_m.cut, width=bin_m * 0.9, label="no cortar",
-           color="#4C72B0")
-    ax.bar(per_m.meter + bin_m / 2, per_m.cut, bottom=per_m.total - per_m.cut, width=bin_m * 0.9,
-           label="cortar", color="#55A868")
+    bottom = np.zeros(len(per_m))
+    for k, col in [("today", "#2CA02C"), ("tomorrow", "#F2B701"), ("later", "#4C72B0")]:
+        ax.bar(per_m.index + bin_m / 2, per_m[k], bottom=bottom, width=bin_m * 0.9,
+               label=STAGE_ES[k], color=col)
+        bottom += per_m[k].values
     ax.set_xlabel("posición a lo largo de la cama (m)")
     ax.set_ylabel("flores")
-    ax.set_title(f"B5 flores por metro — {stem} (borrador)")
+    ax.set_title(f"Flores por metro y cuándo se cortan — {stem} ({color})")
     ax.legend()
     fig.tight_layout()
     fig.savefig(FIGURES_DIR / f"b5_per_meter_{stem}.png", dpi=110)
@@ -209,8 +244,7 @@ def step_b5(stem, P):
     mosaic = build_mosaic(stem, meta, shifts, sc)
     for r in flowers.itertuples():
         cv2.circle(mosaic, (int(r.u_cm * meta["px_per_cm"] * sc), int(r.v_cm * meta["px_per_cm"] * sc)),
-                   max(2, int(r.d_cm * meta["px_per_cm"] * sc / 2)), CUT_BGR if r.cut else NO_CUT_BGR, 1,
-                   cv2.LINE_AA)
+                   max(2, int(r.d_cm * meta["px_per_cm"] * sc / 2)), STAGE_BGR[r.stage], 1, cv2.LINE_AA)
     cv2.imwrite(str(FIGURES_DIR / f"b5_mosaic_full_{stem}.jpg"), mosaic, [cv2.IMWRITE_JPEG_QUALITY, 85])
     seg = int(4 * 100 * meta["px_per_cm"] * sc)  # vista en filas de 4 m
     rows = [mosaic[:, j:j + seg] for j in range(0, mosaic.shape[1], seg)]

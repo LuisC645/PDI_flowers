@@ -83,6 +83,9 @@ Llegan más videos el 15 nov. Por cada uno:
 
 ### Paso 4. Características por flor (B1/B2) · código · 17 nov
 
+**Estado (18 nov):** hecho. Perfiles de los 5 colores, circularidad, solidez y color en Lab por flor.
+
+
 - Agregar a `detections_*.csv`: circularidad, solidez y color medio en Lab.
 - Corregir el diámetro con el factor de paralaje medido en el paso 2 (`normalize.parallax_k`).
 
@@ -96,6 +99,9 @@ Llegan más videos el 15 nov. Por cada uno:
 **Listo cuando:** se elige un método con su error en calibración y se anota en `config/decisions.md`.
 
 ### Paso 6. Calibrar cortar / no cortar (decisión 8) · código + equipo · 18–19 nov
+
+**Estado (18 nov):** versión sin etiquetas hecha. Moneda de 100 COP = 20.3 mm; grupos hoy / mañana / otros días; color calibrado por cama. Falta calibrar con flores etiquetadas y con dos grabaciones de la misma cama.
+
 
 - Tamaño: umbral = diámetro de la moneda medido (paso 2).
 - Color: elegir el rasgo y el umbral con los tramos de calibración (curva ROC). El umbral actual (saturación ≥ 150) deja pasar el 96 % de las flores.

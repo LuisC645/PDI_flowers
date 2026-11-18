@@ -76,28 +76,59 @@ qc:                        # A7: metas fijadas ANTES de medir (BORRADOR, a discu
   # color: la desviación del L del follaje entre cuadros debe bajar después de A6
 
 # ---------------- BLOQUE B ----------------
-profiles:                  # B1 (BORRADOR, decisión 8). HSV escala OpenCV (H 0-180)
-  orange:
-    hsv_lo: [5, 110, 120]
-    hsv_hi: [24, 255, 255]   # H > 25 son botones amarillo-verdosos (no se cuentan)
-    cut_feature: saturation  # criterio de color para cortar
-    cut_min: 150             # BORRADOR: calibrar con ejemplos etiquetados (curva ROC)
-    min_cut_diameter_cm: 2.3 # PENDIENTE F1.3: moneda de 100 COP (23 mm según Banco de la República)
+profiles:                  # B1: un perfil por color de flor. HSV en escala OpenCV (H 0-180, S y V 0-255)
+  # Calibrados con los histogramas tono-saturación de las camas de cada color (ver
+  # config/decisions.md, decisión 8). hue_ranges admite varios rangos (el rojo da la vuelta).
+  orange:                  # 63-40A (rojizo, H~16), 63_39A y 63_41A (durazno, H~22)
+    hue_ranges: [[5, 28]]
+    s_min: 90
+    v_min: 130
+  yellow:                  # 63_58A, 63_59A; los botones son más verdosos (H > 33)
+    hue_ranges: [[22, 34]]
+    s_min: 110
+    v_min: 150
+  red:                     # 63_63A: pétalos coral (S 58-147, V 182-252) con centro rojo oscuro
+    hue_ranges: [[0, 12], [168, 180]]
+    s_min: 50
+    v_min: 150
+  pink:                    # 64_45B: pétalos rosa pálido (S 38-93, V 164-253)
+    hue_ranges: [[0, 6], [145, 180]]
+    s_min: 30
+    v_min: 150
+    clump_diameter_cm: 2.2   # los racimos se reparten con este diámetro de flor (medido a ojo:
+                             # el perfil solo capta pedazos de pétalo; es el perfil más débil)
+  white:                   # 63_38B, 63_39B: poca saturación y mucho brillo (el tono no sirve)
+    hue_ranges: [[0, 180]]
+    s_max: 30                # con 45/195 el follaje plateado de 63_38B pasaba por flor
+    v_min: 215
 
 detection:                 # B2
   min_diameter_cm: 1.0     # descarta manchas pequeñas
   max_diameter_cm: 8.0
-  peak_min_distance_cm: 1.0   # separación mínima entre centros (watershed)
+  peak_min_distance_cm: 1.5   # separación mínima entre centros (watershed); flores de ~2.2 cm
+  min_circularity: 0.45    # 4πA/P²: el poste blanco y los tallos son alargados
+  max_elongation: 0.25     # componente con eje menor / eje mayor < 0.25 y más largo que una flor = poste o tallo
   open_px: 3
   close_px: 5
 
 counting:                  # B3 (BORRADOR, decisión 9)
-  method: track            # track (enlace cuadro a cuadro en coordenada global) o strip (franja central)
+  method: line             # line (línea de conteo; medidas de cada flor desde su rastro) o track (solo rastros)
   phase_scale: 0.5         # reducción para correlación de fase
   min_response: 0.03       # correlación de fase menos fiable -> se interpola el desplazamiento
   eps_cm: 2.0              # distancia máxima entre cuadros para la misma flor
   max_missing: 3           # cuadros seguidos que una flor puede no detectarse
   min_obs: 10              # una flor debe verse en >= min_obs cuadros (cada flor cruza ~40); el conteo es estable con 10
+  line_min_obs: 3          # un rastro que cruza la línea debe verse en >= 3 cuadros (quita ruido)
+  stitch_gap: 8            # cuadros: un rastro que empieza tan poco después de otro...
+  stitch_eps_cm: 2.0       # ...y a esta distancia es la misma flor (rastro partido)
+
+cut:                       # B4: cuándo se corta cada flor (aproximación)
+  coin_diameter_cm: 2.03   # moneda de 100 COP actual (serie 2012): 20.30 mm, Banco de la República
+                           # (la anterior, de 1992, mide 23 mm)
+  growth_per_day: 0.10     # SUPUESTO: el diámetro crece 10 % por día (calibrar grabando la misma cama 2 días)
+  max_days: 7              # tope de días estimados ("otros días")
+  color_mad_k: 1.5         # color "no maduro" = índice < mediana - 1.5·MAD de su propia cama
+  # min_cut_ratio (opcional, por perfil): diámetro de corte = moneda x min_cut_ratio (1 por defecto)
 
 results:                   # B5
   bin_m: 1.0               # tramos de la distribución a lo largo de la cama

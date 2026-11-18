@@ -74,3 +74,19 @@ Registro por día: qué se hizo, qué quedó a medias y qué sigue. Las decision
 - Las tareas manuales siguen pendientes (`README_roadmap.md`, pasos 1–3); conviene hacer las máscaras a mano de al menos un video por color.
 - Perfiles de color para blanca, amarilla, roja y rosada (Bloque B).
 - Recortar los cuadros de transición al inicio y al final de cada cama, que hoy quedan medidos pero incluyen pasillo.
+
+## 18 nov 2026 (Bloque B en los 9 videos)
+
+### Hecho
+- **Perfiles de color** de los 5 colores, calibrados con histogramas tono-saturación (`config/params.yaml`, `profiles`). Admiten varios rangos de tono (rojo y rosado dan la vuelta al círculo). El tono medio por flor ahora es circular.
+- **Detección más robusta:** filtro de circularidad, eliminación de formas alargadas (poste blanco) y reparto de racimos por área. Nuevas características por flor: circularidad, solidez y color en Lab.
+- **Conteo:** unión de rastros partidos y conteo principal por **rastros que cruzan una línea de conteo** ubicada donde la región útil está completa. El seguimiento se reporta como verificación.
+- **Moneda:** 100 COP actual = 20.30 mm (Banco de la República).
+- **Cuándo cortar:** hoy / mañana / otros días, con el tamaño frente a la moneda y el color calibrado por cama (`scripts/calibrate_colors.py`). Supuesto: el diámetro crece 10 % por día.
+- Resumen de las 9 camas: `results/tables/summary_all_videos.csv`.
+
+### Pendiente
+- Conteo manual de tramos para medir el error del conteo (los dos métodos difieren hasta un 22 %).
+- Grabar la misma cama dos días seguidos para calibrar el crecimiento diario.
+- Flores etiquetadas (lista / no lista) para calibrar el color con curva ROC.
+- Revisar si el diámetro de corte debe ser distinto por flor (la blanca es una margarita pequeña, de 1.8 cm de mediana).

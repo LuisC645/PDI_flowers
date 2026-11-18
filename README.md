@@ -62,10 +62,10 @@ En el cuadro normalizado, x va a lo largo de la cama e y a lo ancho; la cama ocu
 | A5 Geometría | `src/normalization/geometry.py` | Rotación + escala (ancho = 1080 px = 8 px/cm) + centrado; matriz guardada | `data/normalized/video/*.mp4`, `*_transforms.csv` |
 | A6 Color | `src/normalization/color.py` | Iguala la media Lab del follaje verde con la del video | (columnas en `*_transforms.csv`) |
 | A7 Calidad | `scripts/block_a.py` | Vuelve a medir la cama en el video normalizado (ancho, centro, ángulo, sacudida lateral, color del follaje) y compara con las metas de `params.qc` | `results/metrics/qc_block_a_*.json` |
-| B1/B2 Detección | `src/analysis/detection.py` | Umbral HSV del perfil → morfología → transformada de distancia → watershed → diámetro | `results/tables/detections_*.csv` |
-| B3 Contar una vez | `src/analysis/counting.py` | Correlación de fase → coordenada global (u, v) → enlace cuadro a cuadro (húngaro) | `shifts_*.csv`, `flowers_*.csv` |
-| B4 Cortar | `src/analysis/counting.py` | Diámetro ≥ moneda **y** saturación ≥ umbral | columna `cut` en `flowers_*.csv` |
-| B5 Resultados | `scripts/block_b.py` | Totales, % a cortar, flores por metro, mosaico marcado | `summary_*.json`, `per_meter_*.csv`, figuras `b5_*` |
+| B1/B2 Detección | `src/analysis/detection.py` | Perfil HSV por color → morfología → sin formas alargadas → transformada de distancia + watershed → racimos repartidos por área; diámetro, circularidad y color (HSV, Lab) | `results/tables/detections_*.csv` |
+| B3 Contar una vez | `src/analysis/counting.py` | Correlación de fase → coordenada global → seguimiento (asignación húngara) + unión de rastros → se cuentan los rastros que cruzan una línea de conteo | `shifts_*.csv`, `flowers_line_*.csv` (principal), `flowers_*.csv` (verificación) |
+| B4 Cuándo cortar | `src/analysis/counting.py`, `scripts/calibrate_colors.py` | Diámetro frente a la moneda de 100 COP (20.3 mm) + color calibrado por cama → hoy / mañana / otros días | columna `stage` |
+| B5 Resultados | `scripts/block_b.py` | Totales por grupo, flores por metro, mosaico marcado y resumen de todas las camas | `summary_*.json`, `summary_all_videos.csv`, figuras `b5_*` |
 
 ## Estructura de carpetas
 

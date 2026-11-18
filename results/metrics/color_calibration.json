@@ -1,0 +1,83 @@
+{
+  "63-40A": {
+    "color": "orange",
+    "feature": "saturation",
+    "median": 162.0,
+    "mad": 9.4,
+    "threshold": 147.9,
+    "not_mature_pct": 12.3,
+    "n_flowers": 26485
+  },
+  "63_38B": {
+    "color": "white",
+    "feature": "value - saturation",
+    "median": 216.4,
+    "mad": 6.8,
+    "threshold": 206.2,
+    "not_mature_pct": 6.6,
+    "n_flowers": 21834
+  },
+  "63_39A": {
+    "color": "orange",
+    "feature": "saturation",
+    "median": 120.2,
+    "mad": 8.5,
+    "threshold": 107.5,
+    "not_mature_pct": 3.7,
+    "n_flowers": 22194
+  },
+  "63_39B": {
+    "color": "white",
+    "feature": "value - saturation",
+    "median": 217.4,
+    "mad": 10.9,
+    "threshold": 201.1,
+    "not_mature_pct": 6.8,
+    "n_flowers": 24684
+  },
+  "63_41A": {
+    "color": "orange",
+    "feature": "saturation",
+    "median": 138.2,
+    "mad": 8.0,
+    "threshold": 126.2,
+    "not_mature_pct": 5.3,
+    "n_flowers": 27211
+  },
+  "63_58A": {
+    "color": "yellow",
+    "feature": "saturation",
+    "median": 168.0,
+    "mad": 10.0,
+    "threshold": 153.0,
+    "not_mature_pct": 13.1,
+    "n_flowers": 24364
+  },
+  "63_59A": {
+    "color": "yellow",
+    "feature": "saturation",
+    "median": 174.0,
+    "mad": 10.4,
+    "threshold": 158.5,
+    "not_mature_pct": 13.2,
+    "n_flowers": 22515
+  },
+  "63_63A": {
+    "color": "red",
+    "feature": "saturation",
+    "median": 99.4,
+    "mad": 9.0,
+    "threshold": 85.9,
+    "not_mature_pct": 7.5,
+    "n_flowers": 22239
+  },
+  "64_45B": {
+    "color": "pink",
+    "feature": "saturation",
+    "median": 63.6,
+    "mad": 11.6,
+    "threshold": 46.1,
+    "not_mature_pct": 3.6,
+    "n_flowers": 26736
+  }
+}

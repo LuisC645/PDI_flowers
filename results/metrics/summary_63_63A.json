@@ -1,0 +1,27 @@
+{
+  "video": "63_63A",
+  "flower_color": "red",
+  "method": "line",
+  "total_flowers": 23428,
+  "total_flowers_other_method": 22239,
+  "methods_diff_pct": 5.3,
+  "today": 10596,
+  "tomorrow": 4243,
+  "later": 8589,
+  "today_pct": 45.2,
+  "tomorrow_pct": 18.1,
+  "later_pct": 36.7,
+  "later_by_days": {
+    "1": 142,
+    "2": 3016,
+    "3": 2013,
+    "4": 1278,
+    "5": 953,
+    "6": 755,
+    "7": 432
+  },
+  "cut_diameter_cm": 2.03,
+  "median_diameter_cm": 1.99,
+  "length_m": 28.95,
+  "note": "aproximación: crecimiento supuesto de growth_per_day; color calibrado sin etiquetas"
+}
