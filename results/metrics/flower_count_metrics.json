@@ -1,0 +1,41 @@
+{
+  "beds": 9,
+  "total_flowers": 219672,
+  "flowers_per_bed": {
+    "mean": 24408,
+    "min": 19986,
+    "max": 32605
+  },
+  "flowers_per_m2": {
+    "mean": 565,
+    "min": 463,
+    "max": 755
+  },
+  "methods_agreement": {
+    "mean_abs_diff_pct": 10.6,
+    "max_abs_diff_pct": 22.0,
+    "beds_within_10_pct": 4
+  },
+  "length": {
+    "mean_abs_err_pct": 5.9,
+    "range_m": [
+      28.95,
+      36.36
+    ]
+  },
+  "per_meter_cv_pct": {
+    "median": 9.1,
+    "max": 41.7
+  },
+  "between_beds_same_color_cv_pct": {
+    "orange": 5.9,
+    "white": 7.3,
+    "yellow": 3.1
+  },
+  "share_pct": {
+    "hoy": 56.9,
+    "mañana": 11.0,
+    "otros": 32.1
+  },
+  "note": "sin conteo manual: miden consistencia, no error absoluto"
+}

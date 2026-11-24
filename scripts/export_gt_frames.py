@@ -7,7 +7,7 @@ Salida: data/ground_truth/frames/<v>_<cuadro>.png   (cuadro del video estandariz
 Qué hacer después: pintar la cama en blanco (255) y el resto en negro (0), en una imagen
 del mismo tamaño, y guardarla en data/ground_truth/masks/<v>_<cuadro>.png (por ejemplo con
 LabelMe, CVAT o GIMP). Luego: python scripts/evaluate_block_a.py
-Uso:  python scripts/export_gt_frames.py [--n 20] [--video 63-40A]
+Uso:  python scripts/export_gt_frames.py [--n 20] [--video 63_40A]
 """
 import argparse
 import sys

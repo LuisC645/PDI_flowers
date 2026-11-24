@@ -12,6 +12,7 @@ dependencies:
   - pandas
   - matplotlib
   - pyyaml
+  - xlrd           # leer el reporte .xls de la empresa (scripts/import_company.py)
   - tqdm
   - ffmpeg
   - jupyterlab

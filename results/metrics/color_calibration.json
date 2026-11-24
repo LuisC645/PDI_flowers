@@ -1,13 +1,4 @@
 {
-  "63-40A": {
-    "color": "orange",
-    "feature": "saturation",
-    "median": 162.0,
-    "mad": 9.4,
-    "threshold": 147.9,
-    "not_mature_pct": 12.3,
-    "n_flowers": 26485
-  },
   "63_38B": {
     "color": "white",
     "feature": "value - saturation",
@@ -34,6 +25,15 @@
     "threshold": 201.1,
     "not_mature_pct": 6.8,
     "n_flowers": 24684
+  },
+  "63_40A": {
+    "color": "orange",
+    "feature": "saturation",
+    "median": 132.6,
+    "mad": 8.1,
+    "threshold": 120.4,
+    "not_mature_pct": 5.3,
+    "n_flowers": 23790
   },
   "63_41A": {
     "color": "orange",

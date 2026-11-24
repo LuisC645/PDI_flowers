@@ -3,8 +3,8 @@
 Sin ejemplos etiquetados no se puede saber qué color corresponde a "lista para cortar". Se
 probó separar en dos grupos con Otsu juntando las camas de cada color, y no funcionó: en
 rosada, roja y blanca la distribución tiene un solo pico (el corte no separa nada real), y en
-naranja los dos picos son dos variedades (63-40A más saturada que 63_39A y 63_41A), no dos
-grados de madurez.
+naranja los dos picos venían del video duplicado `63-40A.mp4` (la misma grabación de 63_41A,
+re-codificada con otro color), no de dos grados de madurez. Las tres camas naranja son de la misma variedad.
 
 Criterio adoptado (conservador): el color se calibra POR CAMA. Una flor tiene color "no
 maduro" solo si es claramente más pálida que el resto de su propia cama:
@@ -30,14 +30,14 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.analysis.counting import color_index  # noqa: E402
-from src.common.paths import (FIGURES_DIR, METRICS_DIR, TABLES_DIR, VIDEOS_METADATA,  # noqa: E402
+from src.common.paths import (FIGURES_DIR, METRICS_DIR, TABLES_DIR, load_metadata,  # noqa: E402
                               load_params)
 
 
 def main():
     k = load_params()["cut"]["color_mad_k"]
-    meta = pd.read_csv(VIDEOS_METADATA, dtype=str).fillna("")
-    meta = meta[(meta.exclude.str.strip() == "") & (meta.flower_color != "")]
+    meta = load_metadata()
+    meta = meta[meta.flower_color != ""]
     out, hists = {}, []
     for v, color in zip(meta.video_id, meta.flower_color):
         path = TABLES_DIR / f"flowers_{v}.csv"

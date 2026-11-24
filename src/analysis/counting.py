@@ -158,7 +158,8 @@ def classify_maturity(flowers, color, color_threshold, cfg, min_cut_ratio=1.0):
     """
     d_cut = cfg["coin_diameter_cm"] * min_cut_ratio
     g = cfg["growth_per_day"]
-    days = np.ceil(np.log(d_cut / flowers["d_cm"]) / np.log(1 + g)).clip(lower=0)
+    # -1e-9: sin él, 3 días exactos dan 3.0000000004 por redondeo y ceil los vuelve 4
+    days = np.ceil(np.log(d_cut / flowers["d_cm"]) / np.log(1 + g) - 1e-9).clip(lower=0)
     days = days.clip(upper=cfg["max_days"])
     color_ok = color_index(flowers, color) >= color_threshold
     stage = np.where((days == 0) & color_ok, "today",

@@ -1,0 +1,27 @@
+{
+  "video": "63_40A",
+  "flower_color": "orange",
+  "method": "line",
+  "total_flowers": 19986,
+  "total_flowers_other_method": 23790,
+  "methods_diff_pct": -16.0,
+  "today": 12076,
+  "tomorrow": 2155,
+  "later": 5755,
+  "today_pct": 60.4,
+  "tomorrow_pct": 10.8,
+  "later_pct": 28.8,
+  "later_by_days": {
+    "1": 39,
+    "2": 1485,
+    "3": 1237,
+    "4": 975,
+    "5": 843,
+    "6": 727,
+    "7": 449
+  },
+  "cut_diameter_cm": 2.03,
+  "median_diameter_cm": 2.25,
+  "length_m": 31.78,
+  "note": "aproximación: crecimiento supuesto de growth_per_day; color calibrado sin etiquetas"
+}

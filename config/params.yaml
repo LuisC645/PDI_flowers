@@ -79,7 +79,7 @@ qc:                        # A7: metas fijadas ANTES de medir (BORRADOR, a discu
 profiles:                  # B1: un perfil por color de flor. HSV en escala OpenCV (H 0-180, S y V 0-255)
   # Calibrados con los histogramas tono-saturación de las camas de cada color (ver
   # config/decisions.md, decisión 8). hue_ranges admite varios rangos (el rojo da la vuelta).
-  orange:                  # 63-40A (rojizo, H~16), 63_39A y 63_41A (durazno, H~22)
+  orange:                  # 63_39A, 63_40A, 63_41A (durazno, H~22). El rango rojizo (H~16) venía del video duplicado borrado el 24 nov
     hue_ranges: [[5, 28]]
     s_min: 90
     v_min: 130

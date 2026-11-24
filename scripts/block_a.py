@@ -11,7 +11,7 @@ Pasos (cada uno lee de disco lo que guardó el anterior):
   a7  control de calidad (puerta al B)     -> results/metrics/qc_block_a_<v>.json + figura
 La salida que usa el Bloque B se lee con src/common/normalized.py (NormalizedVideo).
 Uso:  python scripts/block_a.py                 (todos los pasos, todos los videos)
-      python scripts/block_a.py --steps a4 a56 --video 63-40A
+      python scripts/block_a.py --steps a4 a56 --video 63_40A
 """
 import argparse
 import json

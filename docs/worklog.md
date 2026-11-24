@@ -90,3 +90,28 @@ Registro por día: qué se hizo, qué quedó a medias y qué sigue. Las decision
 - Grabar la misma cama dos días seguidos para calibrar el crecimiento diario.
 - Flores etiquetadas (lista / no lista) para calibrar el color con curva ROC.
 - Revisar si el diámetro de corte debe ser distinto por flor (la blanca es una margarita pequeña, de 1.8 cm de mediana).
+
+## 24 nov 2026 (datos de la empresa, limpieza y robustez)
+
+Los datos de la empresa (reporte de recepción, variedades, fechas de corte) y todo lo derivado de ellos están en `data/ground_truth/company/` y en archivos `company_*` / `beds_flowers_stems.csv`, **ignorados por git**. Aquí solo van porcentajes.
+
+### Hecho
+- **Corrección de camas:** `63-40A.mp4` (el video del borrador) era una copia re-codificada de `63_41A.mp4` (misma hora de creación interna y mismos cuadros). Se borró con todo lo derivado de él, se procesó el verdadero 63-40A (`63_40A.mp4`, A7 pasa) y se exportaron de nuevo los cuadros para las máscaras a mano.
+- **Fecha de grabación:** los 9 videos son del viernes 2 oct, 8:46–9:35 a. m. (columna `record_date`). La fecha de recepción de la empresa se toma como fecha de corte.
+- **`data/videos.csv`** quedó solo con datos del proyecto (cama, color, fecha de grabación); la variedad y las fechas de corte de la empresa pasaron a `data/ground_truth/company/beds_company.csv`.
+- **Camas fuera de la calibración:** 63-38B (dos variedades), 63-58A (no está en el reporte), 63-39B y 63-41A (el reporte no cubre sus primeros cortes). Quedan 5 válidas.
+- **`scripts/compare_company.py`:** tallos estimados = flores / flores por tallo, con el factor en jerarquía (variedad → tipo de flor → todas).
+  - Error dejando una cama fuera: 25 % en promedio con la línea de conteo (36 % con el seguimiento: se confirma la decisión 9). Sesgo +6 %; error del total de las 5 camas +1 %. Sin la cama atípica 63-63A: 21 %.
+  - Flores por tallo: varían 32 % entre camas válidas y 13 % entre las dos de la misma variedad.
+  - Cuándo se corta: con la moneda el pipeline dice "hoy" para el 60 % de las flores, pero la empresa no cortó nada el día de la grabación (día mediano de corte: 1 a 4 días después). Calibrado con sus fechas, el diámetro de corte es 3.0 cm (1.48 × moneda): "hoy" baja al 10 % y el error del día mediano baja de 2.8 a 1.6 días. `params.yaml` sigue con la moneda.
+- **Probado y descartado:** normalizar el conteo por el largo recorrido (empeora el error a 30–38 %).
+- **Revisado:** la cama rosada tiene de 2 a 3 veces más flores por metro al final. Es real (flores más abiertas), no un error.
+- **Métricas del conteo de flores** (`results/metrics/flower_count_metrics.json`, sí en git): acuerdo entre métodos 10.6 % en promedio (máx. 22 %), error del largo recorrido 5.9 %, CV por metro 9 % (mediana), variación entre camas del mismo color 3–7 %.
+- **Robustez:** `load_metadata()` valida `videos.csv`; B4 avisa si falta la calibración de color; `block_b.py` salta los excluidos y escribe `summary_all_videos.csv` y `flower_count_metrics.json`; `scripts/run_all.py` corre todo en orden (`--from` para retomar); pruebas en `tests/` (`python -m unittest discover tests`). Las pruebas encontraron un error de redondeo en `classify_maturity` (3 días exactos daban 4), corregido sin cambio en los totales.
+- Se corrigió una conclusión anterior: los "dos picos" de saturación en naranja no eran dos variedades sino el video duplicado con otro color.
+
+### Limitaciones para el informe
+- La empresa reporta tallos, no flores: no se mide el error absoluto del conteo de flores.
+- 5 camas válidas y una sola variedad con dos camas: el factor de las demás variedades sale de otras camas del mismo tipo de flor.
+- La empresa corta por logística (la cama entera en 1–2 días): el día de corte no es lo mismo que el día en que cada flor está lista.
+- El crecimiento del 10 % diario sigue siendo un supuesto; el diámetro calibrado depende de él.

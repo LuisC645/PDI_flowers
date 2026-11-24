@@ -1,6 +1,6 @@
 # Hoja de ruta: qué falta para terminar el piloto
 
-Estado al 18 nov 2026. Cierre del proyecto: **25 nov 2026**.
+Estado al 24 nov 2026. Cierre del proyecto: **25 nov 2026**.
 Complementa a `README.md` (qué es y cómo se corre), `docs/worklog.md` (qué se hizo cada día) y `config/decisions.md` (decisiones y evidencia).
 
 ## ¿Con esto se termina el piloto?
@@ -10,7 +10,8 @@ Complementa a `README.md` (qué es y cómo se corre), `docs/worklog.md` (qué se
 - [x] Pipeline completo, de video crudo a "cuándo se corta cada flor", reproducible con los scripts.
 - [x] Las 12 decisiones de `config/decisions.md` tomadas, con su evidencia.
 - [ ] Preprocesamiento validado contra máscaras hechas a mano (IoU).
-- [ ] Conteo automático comparado con el conteo manual de tramos (error).
+- [x] Conteo comparado con la referencia de la empresa (tallos por cama): error de 25 % por cama dejando una cama fuera y +1 % en el total (`scripts/compare_company.py`). El conteo manual de tramos no se hizo: el error absoluto en flores queda como limitación.
+- [x] Criterio de corte contrastado con las fechas de corte de la empresa: diámetro calibrado 3.0 cm (moneda: 2.03 cm).
 - [ ] Criterio de corte calibrado con flores etiquetadas y con dos grabaciones de la misma cama.
 - [ ] Informe final y presentación.
 
@@ -28,10 +29,14 @@ Alcance del piloto, para dejarlo explícito:
 | Bloque A: normalización (A1–A7) | Hecho; A7 abre la puerta en las 9 camas. Falta validar contra máscaras a mano |
 | Bloque B: perfiles de color, detección, conteo, cuándo se corta | Hecho en las 9 camas. Falta validar contra conteo manual y flores etiquetadas |
 | Referencia a mano (F1.4) y calibración del crecimiento diario | **Falta (manual)** |
-| Validación y análisis de errores | Falta (necesita la referencia a mano) |
+| Comparación con la empresa (tallos y fechas de corte) | Hecho (24 nov): `results/tables/beds_flowers_stems.csv`, `results/metrics/company_comparison.json`, figuras `company_*` (fuera de git) |
+| Robustez | Hecho (24 nov): validación de `videos.csv`, `scripts/run_all.py`, pruebas en `tests/` |
+| Validación y análisis de errores | Indirecta, con los datos de la empresa. Falta la referencia a mano |
 | Informe y presentación | Falta |
 
-Ramas: el pipeline vive en `draft-pipeline`; las pruebas en `exp/...`. `main` no se toca hasta que el equipo lo decida.
+**Corrección del 24 nov:** `63-40A.mp4` era una copia de la cama 63-41A y se borró junto con todo lo derivado de él. Los cuadros para las máscaras a mano se exportaron de nuevo desde el verdadero 63-40A (`frames_63_40A.csv`). En los pasos 1 y 3 de abajo, donde dice `63-40A` hay que leer `63_40A`.
+
+Ramas: el pipeline vive en `draft-pipeline`; la corrección y la comparación con la empresa, en `fix/bed-ids`; las pruebas en `exp/...`. `main` no se toca hasta que el equipo lo decida.
 
 ---
 

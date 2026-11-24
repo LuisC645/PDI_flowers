@@ -35,7 +35,8 @@ from src.analysis.counting import (aggregate_flowers, classify_maturity, crossin
 from src.analysis.detection import detect_flowers  # noqa: E402
 from src.common.normalized import NormalizedVideo  # noqa: E402
 from src.common.paths import (FIGURES_DIR, METRICS_DIR, NORMALIZED_VIDEO_DIR, TABLES_DIR,  # noqa: E402
-                              TRANSFORMS_DIR, VIDEOS_METADATA, load_params)
+                              TRANSFORMS_DIR, VIDEOS_METADATA, excluded_videos, list_videos,
+                              load_metadata, load_params)
 from src.common.video import iter_frames, read_frames  # noqa: E402
 
 STEPS = ["b12", "b3", "b4", "b5"]
@@ -44,7 +45,10 @@ STEPS = ["b12", "b3", "b4", "b5"]
 def context(stem, P):
     """Datos comunes: salida del Bloque A, perfil de color y estado de cada cuadro."""
     nv = NormalizedVideo(stem)
-    color = pd.read_csv(VIDEOS_METADATA, dtype=str).set_index("video_id").loc[stem, "flower_color"]
+    meta = load_metadata()
+    if stem not in meta.index or not meta.loc[stem, "flower_color"]:
+        raise SystemExit(f"{stem}: needs a row with flower_color in {VIDEOS_METADATA.name}")
+    color = meta.loc[stem, "flower_color"]
     return nv.meta, P["profiles"][color], color, nv.transforms[["frame", "status"]], nv
 
 
@@ -149,7 +153,11 @@ def step_b4(stem, P):
     cal_path = METRICS_DIR / "color_calibration.json"
     if not cal_path.exists():
         raise SystemExit("Run scripts/calibrate_colors.py first (after the b3 step of every video)")
-    thr = json.loads(cal_path.read_text())[stem]["threshold"]  # calibrado por cama
+    cal = json.loads(cal_path.read_text())
+    if stem not in cal:
+        raise SystemExit(f"{stem}: no color calibration; run b3 for this video and then "
+                         "scripts/calibrate_colors.py before b4")
+    thr = cal[stem]["threshold"]  # calibrado por cama
     for name in ("flowers", "flowers_line"):
         path = TABLES_DIR / f"{name}_{stem}.csv"
         f = classify_maturity(pd.read_csv(path), color, thr, P["cut"], profile.get("min_cut_ratio", 1.0))
@@ -260,7 +268,7 @@ def main():
     ap.add_argument("--ignore-gate", action="store_true", help="correr aunque A7 no pase")
     args = ap.parse_args()
     P = load_params()
-    for video in sorted(NORMALIZED_VIDEO_DIR.glob("*.mp4")):
+    for video in list_videos(NORMALIZED_VIDEO_DIR):
         stem = video.stem
         if args.video and stem != args.video:
             continue
@@ -274,6 +282,58 @@ def main():
         print(f"=== {stem}")
         for step in args.steps:
             globals()[f"step_{step}"](stem, P)
+    if "b5" in args.steps:
+        write_summary_all()
+
+
+BED_LENGTH_M, BED_WIDTH_M = 32.0, 1.35   # medidas nominales de la cama
+
+
+def write_summary_all():
+    """B5: resumen y métricas del conteo de flores de todas las camas (sin los excluidos).
+
+    Sin conteo manual no hay error absoluto; estas métricas miden la consistencia del conteo:
+    acuerdo entre los dos métodos, densidad, homogeneidad a lo largo de la cama (CV por metro,
+    sin los 2 m de cada extremo) y error del largo recorrido frente a los 32 m de la cama.
+    """
+    rows = []
+    for path in sorted(METRICS_DIR.glob("summary_*.json")):
+        s = json.loads(path.read_text())
+        if s["video"] in excluded_videos():
+            continue
+        pm = pd.read_csv(TABLES_DIR / f"per_meter_{s['video']}.csv").total.iloc[2:-2]
+        rows.append({"video": s["video"], "color": s["flower_color"], "total": s["total_flowers"],
+                     "tracks>=10": s["total_flowers_other_method"], "diff%": s["methods_diff_pct"],
+                     "hoy": s["today"], "hoy%": s["today_pct"], "mañana": s["tomorrow"],
+                     "mañana%": s["tomorrow_pct"], "otros": s["later"], "otros%": s["later_pct"],
+                     "d_med": s["median_diameter_cm"], "largo_m": s["length_m"],
+                     "length_err%": round(100 * (s["length_m"] - BED_LENGTH_M) / BED_LENGTH_M, 1),
+                     "flowers_per_m": round(s["total_flowers"] / BED_LENGTH_M),
+                     "flowers_per_m2": round(s["total_flowers"] / (BED_LENGTH_M * BED_WIDTH_M)),
+                     "per_meter_cv%": round(float(100 * pm.std() / pm.mean()), 1)})
+    t = pd.DataFrame(rows)
+    t.to_csv(TABLES_DIR / "summary_all_videos.csv", index=False)
+    by_color = t.groupby("color").total.agg(["count", "mean", "std"])
+    metrics = {
+        "beds": len(t), "total_flowers": int(t.total.sum()),
+        "flowers_per_bed": {"mean": round(float(t.total.mean())), "min": int(t.total.min()),
+                            "max": int(t.total.max())},
+        "flowers_per_m2": {"mean": round(float(t.flowers_per_m2.mean())), "min": int(t.flowers_per_m2.min()),
+                           "max": int(t.flowers_per_m2.max())},
+        "methods_agreement": {"mean_abs_diff_pct": round(float(t["diff%"].abs().mean()), 1),
+                              "max_abs_diff_pct": round(float(t["diff%"].abs().max()), 1),
+                              "beds_within_10_pct": int((t["diff%"].abs() <= 10).sum())},
+        "length": {"mean_abs_err_pct": round(float(t["length_err%"].abs().mean()), 1),
+                   "range_m": [float(t.largo_m.min()), float(t.largo_m.max())]},
+        "per_meter_cv_pct": {"median": round(float(t["per_meter_cv%"].median()), 1),
+                             "max": float(t["per_meter_cv%"].max())},
+        "between_beds_same_color_cv_pct": {c: round(float(100 * r["std"] / r["mean"]), 1)
+                                           for c, r in by_color.iterrows() if r["count"] > 1},
+        "share_pct": {k: round(float(100 * t[k].sum() / t.total.sum()), 1) for k in ["hoy", "mañana", "otros"]},
+        "note": "sin conteo manual: miden consistencia, no error absoluto",
+    }
+    (METRICS_DIR / "flower_count_metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False))
+    print(f"B5: summary of {len(rows)} beds -> summary_all_videos.csv, flower_count_metrics.json")
 
 
 if __name__ == "__main__":

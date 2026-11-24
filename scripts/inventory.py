@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from src.common.paths import (FIGURES_DIR, TABLES_DIR, VIDEOS_METADATA, list_videos,  # noqa: E402
+from src.common.paths import (FIGURES_DIR, TABLES_DIR, VIDEOS_METADATA, list_videos, load_metadata,  # noqa: E402
                               load_params)
 from src.common.video import get_video_info, make_mosaic, read_frames  # noqa: E402
 
@@ -22,7 +22,7 @@ from src.common.video import get_video_info, make_mosaic, read_frames  # noqa: E
 def main():
     params = load_params()
     n_sample = params["sample"]["n_frames"]
-    metadata = pd.read_csv(VIDEOS_METADATA, dtype=str).fillna("").set_index("video_id")
+    metadata = load_metadata().drop(columns="video_id")
     rows = []
     for video_path in list_videos():
         info = get_video_info(video_path)

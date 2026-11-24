@@ -25,3 +25,9 @@ __pycache__/
 
 # Tablas pesadas que se regeneran con los scripts (una fila por detección)
 results/tables/detections_*.csv
+
+# Datos de la empresa (reporte de recepción y todo lo derivado de él): no se suben a git
+results/tables/company_*.csv
+results/tables/beds_flowers_stems.csv
+results/metrics/company_*.json
+README_empresa.md
