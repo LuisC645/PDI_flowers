@@ -1,6 +1,6 @@
 # Conteo y clasificación de flores en camas de cultivo (Piloto PDI)
 
-Proyecto de **Procesamiento Digital de Imágenes** (Luis Castillo y Benjamin Ruiz). A partir de un video cenital de una cama de flores de 32 m × 1.35 m, el pipeline normaliza la cama (segmenta, endereza y fija la escala), cuenta las flores, decide cuáles se cortan hoy, mañana u otros días, y estima los tallos para compararlos con el reporte de la empresa.
+Proyecto de **Procesamiento Digital de Imágenes**. A partir de un video cenital de una cama de flores de 32 m × 1.35 m, el pipeline normaliza la cama (segmenta, endereza y fija la escala), cuenta las flores, decide cuáles se cortan hoy, mañana u otros días, y estima los tallos para compararlos con el reporte de la empresa.
 
 Todo se corre con `python scripts/run_all.py` en el entorno conda `pdi` (`environment.yml`).
 
